@@ -1,5 +1,5 @@
 from fastapi import Depends, FastAPI, HTTPException
-from dependencies import require_member,require_trainer,require_manager
+from dependencies import require_member,require_trainer,require_manager,get_current_user_any_role
 from database import get_connection
 from auth import verify_password, create_access_token
 from fastapi.middleware.cors import CORSMiddleware
@@ -27,7 +27,7 @@ class UserLogin(BaseModel):
     password: str
 
 @app.get("/members")
-def get_members():
+def get_members(user=Depends(get_current_user_any_role)):
 
     conn = get_connection()
     cursor = conn.cursor(dictionary=True)
@@ -61,7 +61,7 @@ def get_members():
     return result
 
 @app.get("/trainers")
-def get_trainers():
+def get_trainers(user=Depends(get_current_user_any_role)):
 
     conn = get_connection()
     cursor = conn.cursor(dictionary=True)
@@ -90,7 +90,7 @@ def get_trainers():
     return result
 
 @app.get("/equipment")
-def get_equipment():
+def get_equipment(user=Depends(get_current_user_any_role)):
 
     conn = get_connection()
     cursor = conn.cursor(dictionary=True)
@@ -110,7 +110,7 @@ def get_equipment():
     return result
 
 @app.get("/promotions")
-def get_promotions():
+def get_promotions(user=Depends(get_current_user_any_role)):
 
     conn = get_connection()
     cursor = conn.cursor(dictionary=True)
@@ -134,7 +134,7 @@ def get_promotions():
     return result
 
 @app.get("/lockers")
-def get_lockers():
+def get_lockers(user=Depends(get_current_user_any_role)):
 
     conn = get_connection()
     cursor = conn.cursor(dictionary=True)
@@ -163,7 +163,7 @@ def get_lockers():
     return result
 
 @app.get("/classes")
-def get_classes():
+def get_classes(user=Depends(get_current_user_any_role)):
 
     conn = get_connection()
     cursor = conn.cursor(dictionary=True)
@@ -202,7 +202,7 @@ def get_classes():
     return classes
 
 @app.get("/profile/{member_id}")
-def get_idiv_member(member_id: int):
+def get_idiv_member(member_id: int,user=Depends(get_current_user_any_role)):
 
     conn = get_connection()
     cursor = conn.cursor(dictionary=True)
@@ -222,7 +222,7 @@ def get_idiv_member(member_id: int):
     return member
 
 @app.get("/members")
-def get_members():
+def get_members(user=Depends(get_current_user_any_role)):
 
     conn = get_connection()
     cursor = conn.cursor(dictionary=True)
@@ -505,7 +505,7 @@ def get_member_locker(user=Depends(require_member)):
     return locker
 
 @app.get("/dashboard/stats")
-def get_dashboard_stats():
+def get_dashboard_stats(user=Depends(get_current_user_any_role)):
 
     conn = get_connection()
     cursor = conn.cursor(dictionary=True)
@@ -651,7 +651,7 @@ def login(payload: UserLogin):
     }
 
 @app.post("/attendance/checkin")
-def checkin_member(member_id: int):
+def checkin_member(member_id: int,user=Depends(get_current_user_any_role)):
 
     conn = get_connection()
     cursor = conn.cursor()
@@ -682,7 +682,7 @@ def checkin_member(member_id: int):
     }
 
 @app.post("/trainer/assign-class")
-def assign_trainer(employee_id: int, schedule_id: int):
+def assign_trainer(employee_id: int, schedule_id: int,user=Depends(get_current_user_any_role)):
 
     conn = get_connection()
     cursor = conn.cursor(dictionary=True)
@@ -739,7 +739,7 @@ def assign_trainer(employee_id: int, schedule_id: int):
     }
 
 @app.post("/class/require-equipment")
-def require_equipment(class_id: str, equipment_id: str):
+def require_equipment(class_id: str, equipment_id: str,user=Depends(get_current_user_any_role)):
 
     conn = get_connection()
     cursor = conn.cursor(dictionary=True)
@@ -801,7 +801,7 @@ def require_equipment(class_id: str, equipment_id: str):
 
 
 @app.post("/reserve")
-def reserve_class(member_id: int, schedule_id: int):
+def reserve_class(member_id: int, schedule_id: int,user=Depends(get_current_user_any_role)):
 
     conn = get_connection()
     cursor = conn.cursor()
@@ -899,7 +899,8 @@ def create_member(
     weight: float,
     height: float,
     package_id: str,
-    trainer_id: int
+    trainer_id: int,
+    user=Depends(get_current_user_any_role)
 ):
 
     conn = get_connection()
@@ -977,7 +978,8 @@ def create_employee(
     password: str,
     manager_id: int = None,
     contract_type: str = "Full-time",
-    specialty: str = None
+    specialty: str = None,
+    user=Depends(get_current_user_any_role)
 ):
 
     conn = get_connection()
@@ -1030,7 +1032,7 @@ def create_employee(
     }
 
 @app.post("/locker/create")
-def create_locker(locker_id: str, zone: str):
+def create_locker(locker_id: str, zone: str,user=Depends(get_current_user_any_role)):
 
     conn = get_connection()
     cursor = conn.cursor(dictionary=True)
@@ -1071,7 +1073,8 @@ def create_locker(locker_id: str, zone: str):
 def create_equipment(
     equipment_id: str,
     equipment_name: str,
-    import_date: str
+    import_date: str,
+    user=Depends(get_current_user_any_role)
 ):
 
     conn = get_connection()
@@ -1121,7 +1124,8 @@ def create_class(
     class_id: str,
     class_name: str,
     description: str,
-    capacity: int
+    capacity: int,
+    user=Depends(get_current_user_any_role)
 ):
 
     conn = get_connection()
@@ -1172,7 +1176,8 @@ def create_full_class(
     capacity: int,
     class_date: str,
     class_time: str,
-    employee_id: int
+    employee_id: int,
+    user=Depends(get_current_user_any_role)
 ):
 
     conn = get_connection()
@@ -1251,7 +1256,8 @@ def create_full_class(
 def create_class_schedule(
     class_id: str,
     class_date: str,
-    class_time: str
+    class_time: str,
+    user=Depends(get_current_user_any_role)
 ):
 
     conn = get_connection()
@@ -1304,7 +1310,8 @@ def create_promotion(
     discount_rate: float,
     package_id: str,
     start_date: str,
-    end_date: str
+    end_date: str,
+    user=Depends(get_current_user_any_role)
 ):
 
     conn = get_connection()
@@ -1370,7 +1377,8 @@ def create_package(
     package_id: str,
     pack_name: str,
     pack_price: float,
-    duration: int
+    duration: int,
+    user=Depends(get_current_user_any_role)
 ):
 
     conn = get_connection()
@@ -1416,7 +1424,7 @@ def create_package(
     }
 
 @app.put("/employee/update")
-def update_employee(employee_id: int, salary: float, status: str):
+def update_employee(employee_id: int, salary: float, status: str,user=Depends(get_current_user_any_role)):
 
     conn = get_connection()
     cursor = conn.cursor()
@@ -1437,7 +1445,7 @@ def update_employee(employee_id: int, salary: float, status: str):
     return {"message": "Employee updated successfully"}
 
 @app.put("/trainer/update")
-def update_trainer(employee_id: int, specialty: str):
+def update_trainer(employee_id: int, specialty: str,user=Depends(get_current_user_any_role)):
 
     conn = get_connection()
     cursor = conn.cursor()
@@ -1457,7 +1465,7 @@ def update_trainer(employee_id: int, specialty: str):
     return {"message": "Trainer specialty updated successfully"}
 
 @app.put("/equipment/update")
-def update_equipment(equipment_id: str, status: str):
+def update_equipment(equipment_id: str, status: str,user=Depends(get_current_user_any_role)):
 
     conn = get_connection()
     cursor = conn.cursor()
@@ -1489,7 +1497,8 @@ def update_equipment(equipment_id: str, status: str):
 def update_trainer_member_status(
     employee_id: int,
     member_id: int,
-    status: str
+    status: str,
+    user=Depends(get_current_user_any_role)
 ):
 
     conn = get_connection()
