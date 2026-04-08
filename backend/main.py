@@ -1,8 +1,10 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException
+from dependencies import require_member,require_trainer,require_manager
 from database import get_connection
 from auth import verify_password, create_access_token
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from auth import hash_password  
 
 app = FastAPI()
 
@@ -199,7 +201,7 @@ def get_classes():
 
     return classes
 
-@app.get("/member/{member_id}")
+@app.get("/profile/{member_id}")
 def get_idiv_member(member_id: int):
 
     conn = get_connection()
@@ -253,8 +255,10 @@ def get_members():
 
     return result
     
-@app.get("/trainer/classes/{employee_id}")
-def trainer_classes(employee_id: int):
+@app.get("/trainer/classes")
+def trainer_classes(user=Depends(require_trainer)):
+
+    employee_id = user["id"]
 
     conn = get_connection()
     cursor = conn.cursor(dictionary=True)
@@ -263,9 +267,9 @@ def trainer_classes(employee_id: int):
     SELECT cc.ClassName, cs.ClassDate, cs.ClassTime
     FROM Leads l
     JOIN Class_Schedule cs
-    ON l.Schedule_ID = cs.Schedule_ID
+        ON l.Schedule_ID = cs.Schedule_ID
     JOIN Class_Catalog cc
-    ON cs.ClassID = cc.ClassID
+        ON cs.ClassID = cc.ClassID
     WHERE l.EmployeeID = %s
     """
 
@@ -277,8 +281,10 @@ def trainer_classes(employee_id: int):
 
     return result
 
-@app.get("/trainer/schedule/{employee_id}")
-def trainer_schedule(employee_id: int):
+@app.get("/trainer/schedule")
+def trainer_schedule(user=Depends(require_trainer)):
+
+    employee_id = user["id"]
 
     conn = get_connection()
     cursor = conn.cursor(dictionary=True)
@@ -329,8 +335,10 @@ def trainer_schedule(employee_id: int):
 
     return result
 
-@app.get("/trainer/clients/{employee_id}")
-def get_trainer_clients(employee_id: int):
+@app.get("/trainer/clients")
+def get_trainer_clients(user=Depends(require_trainer)):
+
+    employee_id = user["id"]
 
     conn = get_connection()
     cursor = conn.cursor(dictionary=True)
@@ -357,8 +365,11 @@ def get_trainer_clients(employee_id: int):
     conn.close()
 
     return result
-@app.get("/member/dashboard/{member_id}")
-def member_dashboard(member_id: int):
+
+@app.get("/member/dashboard")
+def member_dashboard(user=Depends(require_member)):
+
+    member_id = user["id"]
 
     conn = get_connection()
     cursor = conn.cursor(dictionary=True)
@@ -461,9 +472,10 @@ def member_dashboard(member_id: int):
         "upcoming_classes": upcoming_classes,
         "checked_today": checkin["checked_today"] > 0
     }
+@app.get("/member/locker")
+def get_member_locker(user=Depends(require_member)):
 
-@app.get("/member/locker/{member_id}")
-def get_member_locker(member_id: int):
+    member_id = user["id"]
 
     conn = get_connection()
     cursor = conn.cursor(dictionary=True)
@@ -564,48 +576,79 @@ def employee_login(payload: UserLogin):
 
 @app.post("/login")
 def login(payload: UserLogin):
+
     conn = get_connection()
     cursor = conn.cursor(dictionary=True)
 
-    #Check Member table
-    cursor.execute("SELECT * FROM Member WHERE Username = %s", (payload.username,))
+    # Check Member table
+    cursor.execute(
+        "SELECT * FROM Member WHERE Username = %s",
+        (payload.username,)
+    )
     user = cursor.fetchone()
+
     if user:
         role = "member"
+
     else:
-        #Check Employee table
-        cursor.execute("SELECT * FROM Employee WHERE Username = %s", (payload.username,))
+        # Check Employee table
+        cursor.execute(
+            "SELECT * FROM Employee WHERE Username = %s",
+            (payload.username,)
+        )
         user = cursor.fetchone()
+
         if not user:
             cursor.close()
             conn.close()
             raise HTTPException(status_code=401, detail="Invalid credentials")
-        
+
         employee_id = user["EmployeeID"]
 
-        #If User is Employee: Check Manager Table
-        cursor.execute("SELECT * FROM Manager WHERE EmployeeID = %s", (employee_id,))
+        # Check Manager table
+        cursor.execute(
+            "SELECT * FROM Manager WHERE EmployeeID = %s",
+            (employee_id,)
+        )
+
         if cursor.fetchone():
             role = "manager"
+
         else:
-            #If not Manager: Check Trainer Table
-            cursor.execute("SELECT * FROM Trainer WHERE EmployeeID = %s", (employee_id,))
+            # Check Trainer table
+            cursor.execute(
+                "SELECT * FROM Trainer WHERE EmployeeID = %s",
+                (employee_id,)
+            )
+
             if cursor.fetchone():
                 role = "trainer"
             else:
-                #Fallback if only in Employee
                 role = "employee"
+
+
+    # Verify password BEFORE closing connection
+    if not verify_password(payload.password, user["PASSWORD"]):
+        cursor.close()
+        conn.close()
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+
+
+    # Create token (now includes ID ✅)
+    token = create_access_token({
+        "sub": user["Username"],
+        "role": role,
+        "id": user.get("Member_ID") or user.get("EmployeeID")
+    })
 
     cursor.close()
     conn.close()
 
-    #Verify password
-    if not verify_password(payload.password, user["PASSWORD"]):
-        raise HTTPException(status_code=401, detail="Invalid credentials")
-
-    #Token
-    token = create_access_token({"sub": user.get("Username"), "role": role})
-    return {"access_token": token, "token_type": "bearer", "role": role}
+    return {
+        "access_token": token,
+        "token_type": "bearer",
+        "role": role
+    }
 
 @app.post("/attendance/checkin")
 def checkin_member(member_id: int):
@@ -850,7 +893,6 @@ def rent_locker(
 def create_member(
     firstname: str,
     lastname: str,
-    username: str,
     password: str,
     bdate: str,
     medrec: str,
@@ -863,6 +905,12 @@ def create_member(
     conn = get_connection()
     cursor = conn.cursor()
 
+    # auto-generate username from firstname
+    username = firstname.lower()
+
+    # hash password
+    hashed_pw = hash_password(password)
+
     member_query = """
     INSERT INTO Member
     (Username, Password, FirstName, LastName, Bdate, MedRec, Weight, Height)
@@ -871,7 +919,7 @@ def create_member(
 
     cursor.execute(member_query, (
         username,
-        password,
+        hashed_pw,
         firstname,
         lastname,
         bdate,
@@ -915,8 +963,10 @@ def create_member(
 
     return {
         "message": "Member created successfully",
-        "Member_ID": member_id
+        "Member_ID": member_id,
+        "Username": username
     }
+
 
 @app.post("/employee/create")
 def create_employee(
@@ -927,14 +977,15 @@ def create_employee(
     password: str,
     manager_id: int = None,
     contract_type: str = "Full-time",
-    is_trainer: bool = False,
     specialty: str = None
 ):
 
     conn = get_connection()
     cursor = conn.cursor()
 
-    # Insert Employee first
+    hashed_pw = hash_password(password)
+
+    # Insert Employee
     employee_query = """
     INSERT INTO Employee
     (FirstName, LastName, Salary, STATUS,
@@ -950,27 +1001,23 @@ def create_employee(
         lastname,
         salary,
         username,
-        password,
+        hashed_pw,
         manager_id,
         contract_type
     ))
 
     employee_id = cursor.lastrowid
 
+    trainer_query = """
+    INSERT INTO Trainer
+    (EmployeeID, Specialty)
+    VALUES (%s,%s)
+    """
 
-    # If trainer → insert into Trainer table
-    if is_trainer:
-
-        trainer_query = """
-        INSERT INTO Trainer
-        (EmployeeID, Specialty)
-        VALUES (%s,%s)
-        """
-
-        cursor.execute(trainer_query, (
-            employee_id,
-            specialty
-        ))
+    cursor.execute(trainer_query, (
+        employee_id,
+        specialty
+    ))
 
     conn.commit()
 
@@ -978,9 +1025,8 @@ def create_employee(
     conn.close()
 
     return {
-        "message": "Employee created successfully",
-        "EmployeeID": employee_id,
-        "TrainerCreated": is_trainer
+        "message": "Trainer created successfully",
+        "EmployeeID": employee_id
     }
 
 @app.post("/locker/create")
