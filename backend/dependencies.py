@@ -49,3 +49,6 @@ def require_manager(user=Depends(get_current_user)):
         )
 
     return user
+
+def get_current_user_any_role(user=Depends(get_current_user)):
+    return user
