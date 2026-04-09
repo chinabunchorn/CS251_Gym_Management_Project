@@ -3,7 +3,7 @@
 import { useState } from "react";
 import MobileHeader from "./components/MobileHeader";
 import MobileNavbar from "./components/MobileNavbar";
-import "./globals.css";
+import "../globals.css"
 
 export default function RootLayout({
   children,

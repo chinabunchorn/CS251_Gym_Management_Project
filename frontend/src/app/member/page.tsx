@@ -1,14 +1,12 @@
 "use client";
 
-import Image from "next/image";
-
 export default function Dashboard() {
   return (
     <div className="space-y-4">
 
       {/* User Info */}
       <div className="flex items-center gap-3">
-        <Image
+        <img
           src="https://i.pravatar.cc/100"
           alt="avatar"
           width={50}

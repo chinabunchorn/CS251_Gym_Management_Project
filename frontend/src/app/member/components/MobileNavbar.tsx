@@ -15,7 +15,7 @@ export default function Drawer({ open, setOpen }: DrawerProps) {
   const menuItems = [
     {
       name: "Home",
-      path: "/",
+      path: "/member",
     },
     {
       name: "Classes",
@@ -62,7 +62,7 @@ export default function Drawer({ open, setOpen }: DrawerProps) {
           {/* Profile + Name */}
           <div className="flex flex-col items-center mt-4">
             <img
-              src="/Profile.jpg"
+              src="/member/Profile.jpg"
               alt="avatar"
               width={70}
               height={70}
