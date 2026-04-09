@@ -220,6 +220,40 @@ def get_idiv_member(member_id: int,user=Depends(get_current_user_any_role)):
     conn.close()
 
     return member
+
+@app.get("/members")
+def get_members(user=Depends(get_current_user_any_role)):
+
+    conn = get_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    query = """
+    SELECT 
+        m.Member_ID,
+        m.FirstName,
+        m.LastName,
+        p.PackageName,
+        s.P_method,
+        m.MedRec,
+        CASE 
+            WHEN s.Enddate >= CURDATE() THEN 'Paid'
+            ELSE 'Expired'
+        END AS PaymentStatus
+    FROM Member m
+    JOIN Subscribes_to s
+        ON m.Member_ID = s.Member_ID
+    JOIN Package p
+        ON s.PackageID = p.PackageID
+    ORDER BY m.Member_ID
+    """
+
+    cursor.execute(query)
+    result = cursor.fetchall()
+
+    cursor.close()
+    conn.close()
+
+    return result
     
 @app.get("/trainer/me")
 def get_current_trainer(user = Depends(require_trainer)):
@@ -1123,55 +1157,7 @@ def create_equipment(
     }
 
 
-@app.post("/class/create")
-def create_class(
-    class_id: str,
-    class_name: str,
-    description: str,
-    capacity: int,
-    user=Depends(get_current_user_any_role)
-):
 
-    conn = get_connection()
-    cursor = conn.cursor(dictionary=True)
-
-    # Check duplicate ClassID
-    check_query = """
-    SELECT ClassID
-    FROM class_catalog
-    WHERE ClassID = %s
-    """
-
-    cursor.execute(check_query, (class_id,))
-    exists = cursor.fetchone()
-
-    if exists:
-        cursor.close()
-        conn.close()
-        return {"message": "ClassID already exists"}
-
-    insert_query = """
-    INSERT INTO class_catalog
-    (ClassID, ClassName, Description, Capacity)
-    VALUES (%s, %s, %s, %s)
-    """
-
-    cursor.execute(insert_query, (
-        class_id,
-        class_name,
-        description,
-        capacity
-    ))
-
-    conn.commit()
-
-    cursor.close()
-    conn.close()
-
-    return {
-        "message": "Class created successfully",
-        "ClassID": class_id
-    }
 @app.post("/class/create-full")
 def create_full_class(
     class_id: str,
@@ -1256,57 +1242,6 @@ def create_full_class(
         cursor.close()
         conn.close()
 
-@app.post("/class/schedule/create")
-def create_class_schedule(
-    class_id: str,
-    class_date: str,
-    class_time: str,
-    user=Depends(get_current_user_any_role)
-):
-
-    conn = get_connection()
-    cursor = conn.cursor(dictionary=True)
-
-    # Check class exists first
-    check_query = """
-    SELECT ClassID
-    FROM class_catalog
-    WHERE ClassID = %s
-    """
-
-    cursor.execute(check_query, (class_id,))
-    exists = cursor.fetchone()
-
-    if exists is None:
-        cursor.close()
-        conn.close()
-        return {"message": "ClassID not found"}
-
-
-    # Insert schedule
-    insert_query = """
-    INSERT INTO class_schedule
-    (ClassID, ClassDate, ClassTime)
-    VALUES (%s, %s, %s)
-    """
-
-    cursor.execute(insert_query, (
-        class_id,
-        class_date,
-        class_time
-    ))
-
-    schedule_id = cursor.lastrowid
-
-    conn.commit()
-
-    cursor.close()
-    conn.close()
-
-    return {
-        "message": "Schedule created successfully",
-        "Schedule_ID": schedule_id
-    }
 
 @app.post("/promotion/create")
 def create_promotion(
