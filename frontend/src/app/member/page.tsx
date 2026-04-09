@@ -1,6 +1,7 @@
+/* eslint-disable @next/next/no-img-element */
 "use client";
 
-import Image from "next/image";
+import Actions from "./components/Actions";
 
 export default function Dashboard() {
   return (
@@ -8,7 +9,7 @@ export default function Dashboard() {
 
       {/* User Info */}
       <div className="flex items-center gap-3">
-        <Image
+        <img
           src="https://i.pravatar.cc/100"
           alt="avatar"
           width={50}
@@ -22,7 +23,7 @@ export default function Dashboard() {
       </div>
 
       {/* Membership */}
-      <div className="bg-gradient-to-r from-purple-600 to-indigo-500 text-white p-4 rounded-2xl shadow-md">
+      <div className="bg-linear-to-r from-purple-600 to-indigo-500 text-white p-4 rounded-2xl shadow-md">
         <p className="text-sm">Monthly Basic Membership</p>
         <p className="text-xs opacity-80 mt-1">
           Next payment on the 3rd of May 2026
@@ -34,7 +35,7 @@ export default function Dashboard() {
       </div>
 
       {/* Actions */}
-      <div className="grid grid-cols-2 gap-2">
+      {/* <div className="grid grid-cols-2 gap-2">
         {["Book Class", "My Locker", "My Bookings", "Trainers"].map(
           (item) => (
             <button
@@ -45,7 +46,8 @@ export default function Dashboard() {
             </button>
           )
         )}
-      </div>
+      </div> */}
+      <Actions />
 
       {/* Upcoming Classes */}
       <div>
