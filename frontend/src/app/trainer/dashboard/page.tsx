@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Navbar from "../../components/trainer_navbar";
 import AuthGuard from "../../components/AuthGuard";
+import Link from "next/link";
 
 export default function Trainer_dashboard() {
   const [trainer, setTrainer] = useState<any>(null);
@@ -151,7 +152,9 @@ export default function Trainer_dashboard() {
                 <div className="flex gap-[25px] ml-10">
                   <img src="/trainer/white_schedule.png" alt="schedule" className="h-8" />
                   <h1 className="text-3xl font-bold">Upcoming Event</h1>
-                  <img src="/trainer/arrow.png" alt="Schedule" className="h-9 ml-auto" />
+                  <Link href={"/trainer/schedule"}>
+                    <img src="/trainer/arrow.png" alt="Schedule" className="h-9 ml-auto" />
+                  </Link>
                 </div>
                 <div>
                   {nearestClass ? (
@@ -185,11 +188,13 @@ export default function Trainer_dashboard() {
             <div className="w-[90%] h-[55%] ml-auto pl-8">
               <div className="flex items-center justify-between">
                 <h1 className="text-[#202022] text-3xl font-bold">All Upcomming Classes</h1>
-                <h1 className="text-[#5F33E1] text-xl font-bold">View all &gt;</h1>
+                <Link href={"/trainer/classes"}>
+                  <h1 className="text-[#5F33E1] text-xl font-bold">View all &gt;</h1>
+                </Link>
               </div>
               <div className="upcoming-classes text-[#202022] h-[375px] overflow-y-auto w-[98%] mt-3 ml-auto">
                 {upcomingClasses.length === 0 ? (
-                  <p>No upcoming classes</p>
+                  <div className="text-[#F579AD] h-full bg-[#ffffff] rounded-3xl font-bold text-2xl flex justify-center items-center">No upcoming classes</div>
                 ) : (
                   upcomingClasses.map((cls, index) => (
                     <div key={index} className="class-card bg-[#ffffff] flex pl-10 p-2 rounded-lg mb-5 justify-between">
@@ -249,7 +254,7 @@ export default function Trainer_dashboard() {
 
               <div className="mt-3 p-4 max-h-[400px] overflow-y-auto">
                 {client.length === 0 ? (
-                  <p>No active clients</p>
+                  <div className="text-[#F579AD] h-[350px] bg-[#ffffff] rounded-3xl flex justify-center items-center font-bold text-2xl">No active clients</div>
                 ) : (
                   client.slice(0, 3).map((client, idx) => (
                     <div key={idx} className="flex items-center mb-5 gap-4 p-4 bg-[#ffffff] w-full h-[100px] justify-between rounded-2xl">
