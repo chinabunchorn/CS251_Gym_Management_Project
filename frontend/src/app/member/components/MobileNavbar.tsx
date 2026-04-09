@@ -8,38 +8,38 @@ type DrawerProps = {
   setOpen: (value: boolean) => void;
 };
 
-export default function Drawer({ open, setOpen }: DrawerProps) {
+export default function MobileNavbar({ open, setOpen }: DrawerProps) {
   const pathName = usePathname();
 
   // Link to other pages here
   const menuItems = [
     {
       name: "Home",
-      path: "/",
+      path: "/member",
     },
     {
       name: "Classes",
-      path: "/classes",
+      path: "/member/classes",
     },
     {
       name: "Trainers",
-      path: "/trainers",
+      path: "/member/trainers",
     },
     {
       name: "Lockers",
-      path: "/lockers",
+      path: "/member/lockers",
     },
     {
       name: "Equipment",
-      path: "/equipment",
+      path: "/member/equipment",
     },
     {
       name: "Promotions",
-      path: "/promotions",
+      path: "/member/promotions",
     },
     {
       name: "My Bookings",
-      path: "/bookings",
+      path: "/member/bookings",
     },
   ];
 
@@ -62,7 +62,7 @@ export default function Drawer({ open, setOpen }: DrawerProps) {
           {/* Profile + Name */}
           <div className="flex flex-col items-center mt-4">
             <img
-              src="/Profile.jpg"
+              src="/member/Profile.jpg"
               alt="avatar"
               width={70}
               height={70}

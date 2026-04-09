@@ -12,12 +12,12 @@ export default function MobileHeader({ onMenuClick }: HeaderProps) {
     // Get name of each page to display on top of page :3
     // Change pathname here depending on file structure
     const titles: Record<string, string> = {
-    "/" : "Home",
-    "/classes" : "Classes",
-    "/trainers" : "Trainers",
-    "/bookings" :"My Bookings",
-    "/promotions" : "Promotions",
-    "/Lockers": "Lockers"
+    "/member" : "Home",
+    "/member/classes" : "Classes",
+    "/member/trainers" : "Trainers",
+    "/member/bookings" :"My Bookings",
+    "/member/promotions" : "Promotions",
+    "/member/Lockers": "Lockers"
   }
 
   const title = titles[pathName] || "App";
