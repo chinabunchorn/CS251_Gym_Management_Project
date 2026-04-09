@@ -1,6 +1,8 @@
 /* eslint-disable @next/next/no-img-element */
 "use client";
 
+import Actions from "./components/Actions";
+
 export default function Dashboard() {
   return (
     <div className="space-y-4">
@@ -33,7 +35,7 @@ export default function Dashboard() {
       </div>
 
       {/* Actions */}
-      <div className="grid grid-cols-2 gap-2">
+      {/* <div className="grid grid-cols-2 gap-2">
         {["Book Class", "My Locker", "My Bookings", "Trainers"].map(
           (item) => (
             <button
@@ -44,7 +46,8 @@ export default function Dashboard() {
             </button>
           )
         )}
-      </div>
+      </div> */}
+      <Actions />
 
       {/* Upcoming Classes */}
       <div>
