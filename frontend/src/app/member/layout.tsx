@@ -14,7 +14,6 @@ export default function RootLayout({
 
   return (
     <html lang="en">
-      <body className="bg-gray-100">
       <body className="manrope.className bg-gray-100">
         <MobileNavbar open={open} setOpen={setOpen} />
 
