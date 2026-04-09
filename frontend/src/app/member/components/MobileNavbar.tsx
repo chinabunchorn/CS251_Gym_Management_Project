@@ -8,7 +8,7 @@ type DrawerProps = {
   setOpen: (value: boolean) => void;
 };
 
-export default function Drawer({ open, setOpen }: DrawerProps) {
+export default function MobileNavbar({ open, setOpen }: DrawerProps) {
   const pathName = usePathname();
 
   // Link to other pages here
@@ -19,27 +19,27 @@ export default function Drawer({ open, setOpen }: DrawerProps) {
     },
     {
       name: "Classes",
-      path: "/classes",
+      path: "/member/classes",
     },
     {
       name: "Trainers",
-      path: "/trainers",
+      path: "/member/trainers",
     },
     {
       name: "Lockers",
-      path: "/lockers",
+      path: "/member/lockers",
     },
     {
       name: "Equipment",
-      path: "/equipment",
+      path: "/member/equipment",
     },
     {
       name: "Promotions",
-      path: "/promotions",
+      path: "/member/promotions",
     },
     {
       name: "My Bookings",
-      path: "/bookings",
+      path: "/member/bookings",
     },
   ];
 

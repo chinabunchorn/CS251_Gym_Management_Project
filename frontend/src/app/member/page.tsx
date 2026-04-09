@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 "use client";
 
 export default function Dashboard() {
@@ -20,7 +21,7 @@ export default function Dashboard() {
       </div>
 
       {/* Membership */}
-      <div className="bg-gradient-to-r from-purple-600 to-indigo-500 text-white p-4 rounded-2xl shadow-md">
+      <div className="bg-linear-to-r from-purple-600 to-indigo-500 text-white p-4 rounded-2xl shadow-md">
         <p className="text-sm">Monthly Basic Membership</p>
         <p className="text-xs opacity-80 mt-1">
           Next payment on the 3rd of May 2026
