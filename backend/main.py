@@ -220,40 +220,6 @@ def get_idiv_member(member_id: int,user=Depends(get_current_user_any_role)):
     conn.close()
 
     return member
-
-@app.get("/members")
-def get_members(user=Depends(get_current_user_any_role)):
-
-    conn = get_connection()
-    cursor = conn.cursor(dictionary=True)
-
-    query = """
-    SELECT 
-        m.Member_ID,
-        m.FirstName,
-        m.LastName,
-        p.PackageName,
-        s.P_method,
-        m.MedRec,
-        CASE 
-            WHEN s.Enddate >= CURDATE() THEN 'Paid'
-            ELSE 'Expired'
-        END AS PaymentStatus
-    FROM Member m
-    JOIN Subscribes_to s
-        ON m.Member_ID = s.Member_ID
-    JOIN Package p
-        ON s.PackageID = p.PackageID
-    ORDER BY m.Member_ID
-    """
-
-    cursor.execute(query)
-    result = cursor.fetchall()
-
-    cursor.close()
-    conn.close()
-
-    return result
     
 @app.get("/trainer/me")
 def get_current_trainer(user = Depends(require_trainer)):
