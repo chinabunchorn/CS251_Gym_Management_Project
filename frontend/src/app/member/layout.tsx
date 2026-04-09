@@ -3,7 +3,6 @@
 import { useState } from "react";
 import MobileHeader from "./components/MobileHeader";
 import MobileNavbar from "./components/MobileNavbar";
-import "./globals.css";
 
 export default function RootLayout({
   children,
@@ -15,6 +14,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="bg-gray-100">
+      <body className="manrope.className bg-gray-100">
         <MobileNavbar open={open} setOpen={setOpen} />
 
         <div className="w-full max-w-sm mx-auto min-h-screen bg-white shadow">
