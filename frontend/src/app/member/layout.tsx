@@ -4,6 +4,7 @@ import { useState } from "react";
 import MobileHeader from "./components/MobileHeader";
 import MobileNavbar from "./components/MobileNavbar";
 
+
 export default function RootLayout({
   children,
 }: {
