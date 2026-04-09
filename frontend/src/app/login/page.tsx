@@ -40,7 +40,7 @@ export default function LoginPage() {
 
     // Redirect based on role
     if (data.role === "member") {
-      window.location.href = "/member/dashboard";
+      window.location.href = "/member";
     } else if (data.role === "manager") {
       window.location.href = "/manager/dashboard";
     } else if (data.role === "trainer") {
