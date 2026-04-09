@@ -81,7 +81,8 @@ export default function Trainer_classes() {
 
     //Get classname and amount this week
     const startOfWeek = new Date(selectedDate);
-    startOfWeek.setDate(selectedDate.getDate() - selectedDate.getDay());
+    const day = selectedDate.getDay() || 7;
+    startOfWeek.setDate(selectedDate.getDate() - day + 1);
 
     const endOfWeek = new Date(startOfWeek);
     endOfWeek.setDate(startOfWeek.getDate() + 6);
@@ -130,9 +131,9 @@ export default function Trainer_classes() {
                             <div className="flex w-full text-[#202022] font-bold text-3xl">Class this week</div>
                             <div className="flex flex-col w-[80%] p-6 gap-5 m-auto">
                                 {Object.keys(weeklyClassCounts).length === 0 ? (
-                                        <h3 className="flex justify-center items-center text-xl font-bold text-[#202022]">
-                                            No classes this week
-                                        </h3>
+                                    <h3 className="flex justify-center items-center text-xl font-bold text-[#202022]">
+                                        No classes this week
+                                    </h3>
                                 ) : (
                                     Object.entries(weeklyClassCounts).map(
                                         ([className, count], index) => (
