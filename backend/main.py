@@ -1,7 +1,7 @@
 from fastapi import Depends, FastAPI, HTTPException
 from dependencies import require_member,require_trainer,require_manager,get_current_user_any_role
 from database import get_connection
-from auth import verify_password, create_access_token
+from auth import verify_password, create_access_token, seconds_to_time
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from auth import hash_password  
@@ -255,6 +255,31 @@ def get_members(user=Depends(get_current_user_any_role)):
 
     return result
     
+@app.get("/trainer/me")
+def get_current_trainer(user = Depends(require_trainer)):
+
+    trainer_id = user["id"]
+    conn = get_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    query = """
+        SELECT e.FirstName, e.LastName, t.Specialty
+        FROM Trainer t
+        JOIN Employee e ON t.EmployeeID = e.EmployeeID
+        WHERE e.EmployeeID = %s;
+    """
+    cursor.execute(query, (trainer_id,))
+    result = cursor.fetchone()
+
+    if result is None:
+        raise HTTPException(status_code=404, detail="Trainer not found")
+
+    return {
+        "first_name": result["FirstName"],
+        "last_name": result["LastName"],
+        "Specialty": result["Specialty"]
+    }
+
 @app.get("/trainer/classes")
 def trainer_classes(user=Depends(require_trainer)):
 
@@ -264,22 +289,35 @@ def trainer_classes(user=Depends(require_trainer)):
     cursor = conn.cursor(dictionary=True)
 
     query = """
-    SELECT cc.ClassName, cs.ClassDate, cs.ClassTime
+    SELECT 
+        cc.ClassName AS class_name,
+        cs.ClassDate AS class_date,
+        cs.ClassTime AS class_time,
+        cc.Capacity AS capacity,
+        COUNT(r.Member_ID) AS applied
     FROM Leads l
     JOIN Class_Schedule cs
         ON l.Schedule_ID = cs.Schedule_ID
     JOIN Class_Catalog cc
         ON cs.ClassID = cc.ClassID
+    LEFT JOIN Reserves r
+        ON cs.Schedule_ID = r.Schedule_ID
     WHERE l.EmployeeID = %s
+    GROUP BY cs.Schedule_ID, cc.ClassName, cs.ClassDate, cs.ClassTime, cc.Capacity
+    ORDER BY cs.ClassDate, cs.ClassTime
     """
 
     cursor.execute(query, (employee_id,))
     result = cursor.fetchall()
 
+    for row in result:
+        row["class_time"] = seconds_to_time(row["class_time"])
+
     cursor.close()
     conn.close()
 
     return result
+    
 
 @app.get("/trainer/schedule")
 def trainer_schedule(user=Depends(require_trainer)):

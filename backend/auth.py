@@ -27,3 +27,15 @@ def decode_access_token(token: str):
         return payload
     except JWTError:
         return None
+    
+def seconds_to_time(seconds):
+    if isinstance(seconds, timedelta):
+        seconds = int(seconds.total_seconds())
+    else:
+        seconds = int(seconds)
+
+    hours = seconds // 3600
+    minutes = (seconds % 3600) // 60
+    seconds = seconds % 60
+
+    return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
