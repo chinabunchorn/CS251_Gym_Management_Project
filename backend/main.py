@@ -199,7 +199,7 @@ def get_members(user=Depends(get_current_user_any_role)):
         m.Member_ID,
         m.FirstName,
         m.LastName,
-        p.PackageName,
+        p.PackName,
         s.P_method,
         m.MedRec,
         CASE 
