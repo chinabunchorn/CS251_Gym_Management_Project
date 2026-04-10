@@ -3,11 +3,13 @@
 interface Props {
   selectedDate: Date;
   setSelectedDate: React.Dispatch<React.SetStateAction<Date>>;
+  title?: string;
 }
 
 export default function Date_changer({
   selectedDate,
   setSelectedDate,
+  title = "Classes",
 }: Props) {
   const formattedDate = selectedDate.toLocaleDateString("en-US", {
     weekday: "short",
@@ -30,7 +32,7 @@ export default function Date_changer({
   return (
     <div className="p-3 w-fit">
       {/* Title */}
-      <h2 className="text-4xl font-semibold text-black mb-8">Classes</h2>
+      <h2 className="text-4xl font-semibold text-black mb-8">{title}</h2>
 
       {/* Date + arrows */}
       <div className="flex items-center gap-20">
