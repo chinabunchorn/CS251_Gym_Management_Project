@@ -1437,3 +1437,328 @@ def update_trainer_member_status(
         "message": "Trainer-member status updated successfully"
     }
 
+# ==========================================
+# MANAGER ROUTES: UPDATE (PUT) & DELETE (DELETE)
+# ==========================================
+
+# 1. Class
+@app.put("/manager/class/update")
+def manager_update_class(
+    class_id: str,
+    class_name: str,
+    description: str,
+    capacity: int,
+    class_date: str,
+    class_time: str,
+    employee_id: int,
+    user=Depends(require_manager)
+):
+    conn = get_connection()
+    cursor = conn.cursor(dictionary=True)
+    try:
+        cursor.execute("""
+            UPDATE class_catalog
+            SET ClassName = %s, Description = %s, Capacity = %s
+            WHERE ClassID = %s
+        """, (class_name, description, capacity, class_id))
+
+        cursor.execute("""
+            UPDATE class_schedule
+            SET ClassDate = %s, ClassTime = %s
+            WHERE ClassID = %s
+        """, (class_date, class_time, class_id))
+
+        cursor.execute("SELECT Schedule_ID FROM class_schedule WHERE ClassID = %s", (class_id,))
+        schedule = cursor.fetchone()
+        if schedule:
+            cursor.execute("""
+                UPDATE leads
+                SET EmployeeID = %s
+                WHERE Schedule_ID = %s
+            """, (employee_id, schedule["Schedule_ID"]))
+
+        conn.commit()
+        return {"message": "Class updated successfully"}
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=400, detail=str(e))
+    finally:
+        cursor.close()
+        conn.close()
+
+@app.delete("/manager/class/delete/{class_id}")
+def manager_delete_class(class_id: str, user=Depends(require_manager)):
+    conn = get_connection()
+    cursor = conn.cursor(dictionary=True)
+    try:
+        cursor.execute("SELECT Schedule_ID FROM class_schedule WHERE ClassID = %s", (class_id,))
+        schedules = cursor.fetchall()
+
+        for sch in schedules:
+            sch_id = sch["Schedule_ID"]
+            cursor.execute("DELETE FROM reserves WHERE Schedule_ID = %s", (sch_id,))
+            cursor.execute("DELETE FROM leads WHERE Schedule_ID = %s", (sch_id,))
+
+        cursor.execute("DELETE FROM class_schedule WHERE ClassID = %s", (class_id,))
+        cursor.execute("DELETE FROM requires WHERE ClassID = %s", (class_id,))
+        cursor.execute("DELETE FROM class_catalog WHERE ClassID = %s", (class_id,))
+
+        conn.commit()
+        return {"message": "Class deleted successfully"}
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=400, detail=str(e))
+    finally:
+        cursor.close()
+        conn.close()
+
+# 2. Member
+@app.put("/manager/member/update")
+def manager_update_member(
+    member_id: int,
+    firstname: str,
+    lastname: str,
+    password: str,
+    bdate: str,
+    medrec: str,
+    weight: float,
+    height: float,
+    package_id: str,
+    trainer_id: int,
+    user=Depends(require_manager)
+):
+    conn = get_connection()
+    cursor = conn.cursor()
+    try:
+        hashed_pw = hash_password(password)
+        cursor.execute("""
+            UPDATE Member
+            SET FirstName=%s, LastName=%s, PASSWORD=%s, Bdate=%s, MedRec=%s, Weight=%s, Height=%s
+            WHERE Member_ID=%s
+        """, (firstname, lastname, hashed_pw, bdate, medrec, weight, height, member_id))
+
+        cursor.execute("""
+            UPDATE Subscribes_to
+            SET packageID=%s
+            WHERE Member_ID=%s AND Enddate >= CURDATE()
+        """, (package_id, member_id))
+
+        cursor.execute("""
+            UPDATE Trains
+            SET EmployeeID=%s
+            WHERE Member_ID=%s AND Status='Active'
+        """, (trainer_id, member_id))
+
+        conn.commit()
+        return {"message": "Member updated successfully"}
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=400, detail=str(e))
+    finally:
+        cursor.close()
+        conn.close()
+
+@app.delete("/manager/member/delete/{member_id}")
+def manager_delete_member(member_id: int, user=Depends(require_manager)):
+    conn = get_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("DELETE FROM attendance WHERE Member_ID = %s", (member_id,))
+        cursor.execute("DELETE FROM rent WHERE Member_ID = %s", (member_id,))
+        cursor.execute("DELETE FROM reserves WHERE Member_ID = %s", (member_id,))
+        cursor.execute("DELETE FROM subscribes_to WHERE Member_ID = %s", (member_id,))
+        cursor.execute("DELETE FROM trains WHERE Member_ID = %s", (member_id,))
+        cursor.execute("DELETE FROM Member WHERE Member_ID = %s", (member_id,))
+        conn.commit()
+        return {"message": "Member deleted successfully"}
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=400, detail=str(e))
+    finally:
+        cursor.close()
+        conn.close()
+
+# 3. Trainer
+@app.put("/manager/trainer/update")
+def manager_update_trainer(
+    employee_id: int,
+    firstname: str,
+    lastname: str,
+    salary: float,
+    username: str,
+    password: str,
+    manager_id: int = None,
+    contract_type: str = "Full-time",
+    specialty: str = None,
+    user=Depends(require_manager)
+):
+    conn = get_connection()
+    cursor = conn.cursor()
+    try:
+        hashed_pw = hash_password(password)
+        cursor.execute("""
+            UPDATE Employee
+            SET FirstName=%s, LastName=%s, Salary=%s, Username=%s, PASSWORD=%s, ManagerID=%s, Contract_Type=%s
+            WHERE EmployeeID=%s
+        """, (firstname, lastname, salary, username, hashed_pw, manager_id, contract_type, employee_id))
+
+        cursor.execute("""
+            UPDATE Trainer
+            SET Specialty=%s
+            WHERE EmployeeID=%s
+        """, (specialty, employee_id))
+
+        conn.commit()
+        return {"message": "Trainer updated successfully"}
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=400, detail=str(e))
+    finally:
+        cursor.close()
+        conn.close()
+
+@app.delete("/manager/trainer/delete/{employee_id}")
+def manager_delete_trainer(employee_id: int, user=Depends(require_manager)):
+    conn = get_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("DELETE FROM trains WHERE EmployeeID = %s", (employee_id,))
+        cursor.execute("DELETE FROM leads WHERE EmployeeID = %s", (employee_id,))
+        cursor.execute("DELETE FROM Trainer WHERE EmployeeID = %s", (employee_id,))
+        cursor.execute("DELETE FROM Manager WHERE EmployeeID = %s", (employee_id,))
+        cursor.execute("DELETE FROM Employee WHERE EmployeeID = %s", (employee_id,))
+        conn.commit()
+        return {"message": "Trainer deleted successfully"}
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=400, detail=str(e))
+    finally:
+        cursor.close()
+        conn.close()
+
+# 4. Promotion
+@app.put("/manager/promotion/update")
+def manager_update_promotion(
+    promo_code: str,
+    discount_rate: float,
+    package_id: str,
+    start_date: str,
+    end_date: str,
+    user=Depends(require_manager)
+):
+    conn = get_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("""
+            UPDATE Promotion
+            SET DiscountRate=%s, StartDate=%s, EndDate=%s
+            WHERE PromoCode=%s
+        """, (discount_rate, start_date, end_date, promo_code))
+
+        cursor.execute("""
+            UPDATE Applies_to
+            SET packageID=%s
+            WHERE PromoCode=%s
+        """, (package_id, promo_code))
+
+        conn.commit()
+        return {"message": "Promotion updated successfully"}
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=400, detail=str(e))
+    finally:
+        cursor.close()
+        conn.close()
+
+@app.delete("/manager/promotion/delete/{promo_code}")
+def manager_delete_promotion(promo_code: str, user=Depends(require_manager)):
+    conn = get_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("DELETE FROM applies_to WHERE PromoCode = %s", (promo_code,))
+        cursor.execute("DELETE FROM Promotion WHERE PromoCode = %s", (promo_code,))
+        conn.commit()
+        return {"message": "Promotion deleted successfully"}
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=400, detail=str(e))
+    finally:
+        cursor.close()
+        conn.close()
+
+# 5. Locker
+@app.put("/manager/locker/update")
+def manager_update_locker(
+    locker_id: str,
+    zone: str,
+    user=Depends(require_manager)
+):
+    conn = get_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("UPDATE Locker SET Zone=%s WHERE LockerID=%s", (zone, locker_id))
+        conn.commit()
+        return {"message": "Locker updated successfully"}
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=400, detail=str(e))
+    finally:
+        cursor.close()
+        conn.close()
+
+@app.delete("/manager/locker/delete/{locker_id}")
+def manager_delete_locker(locker_id: str, user=Depends(require_manager)):
+    conn = get_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("DELETE FROM rent WHERE LockerID = %s", (locker_id,))
+        cursor.execute("DELETE FROM Locker WHERE LockerID = %s", (locker_id,))
+        conn.commit()
+        return {"message": "Locker deleted successfully"}
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=400, detail=str(e))
+    finally:
+        cursor.close()
+        conn.close()
+
+# 6. Equipment
+@app.put("/manager/equipment/update")
+def manager_update_equipment(
+    equipment_id: str,
+    equipment_name: str,
+    import_date: str,
+    user=Depends(require_manager)
+):
+    conn = get_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("""
+            UPDATE Gym_Equipment
+            SET Equipment=%s, Import_Date=%s
+            WHERE Equipment_ID=%s
+        """, (equipment_name, import_date, equipment_id))
+        conn.commit()
+        return {"message": "Equipment updated successfully"}
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=400, detail=str(e))
+    finally:
+        cursor.close()
+        conn.close()
+
+@app.delete("/manager/equipment/delete/{equipment_id}")
+def manager_delete_equipment(equipment_id: str, user=Depends(require_manager)):
+    conn = get_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("DELETE FROM requires WHERE Equipment_ID = %s", (equipment_id,))
+        cursor.execute("DELETE FROM Gym_Equipment WHERE Equipment_ID = %s", (equipment_id,))
+        conn.commit()
+        return {"message": "Equipment deleted successfully"}
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=400, detail=str(e))
+    finally:
+        cursor.close()
+        conn.close()
