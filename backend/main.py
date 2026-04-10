@@ -1209,7 +1209,6 @@ def create_equipment(
 
 @app.post("/class/create-full")
 def create_full_class(
-    class_id: str,
     class_name: str,
     description: str,
     capacity: int,
@@ -1218,38 +1217,54 @@ def create_full_class(
     employee_id: int,
     user=Depends(get_current_user_any_role)
 ):
-
     conn = get_connection()
     cursor = conn.cursor(dictionary=True)
 
     try:
-
         cursor.execute("""
-            SELECT ClassID
-            FROM class_catalog
-            WHERE ClassID = %s
-        """, (class_id,))
+            SELECT ClassID 
+            FROM class_catalog 
+            WHERE LOWER(ClassName) = LOWER(%s)
+            LIMIT 1
+        """, (class_name.strip(),))
+        
+        existing_class = cursor.fetchone()
 
-        if cursor.fetchone():
-            return {"message": "Class already exists"}
+        if existing_class:
+            target_class_id = existing_class['ClassID']
+        else:
+            cursor.execute("""
+                SELECT ClassID
+                FROM class_catalog
+                WHERE ClassID LIKE 'C%'
+                ORDER BY CAST(SUBSTRING(ClassID, 2) AS UNSIGNED) DESC
+                LIMIT 1
+            """)
+            last_class = cursor.fetchone()
 
-        cursor.execute("""
-            INSERT INTO class_catalog
-            (ClassID, ClassName, Description, Capacity)
-            VALUES (%s, %s, %s, %s)
-        """, (
-            class_id,
-            class_name,
-            description,
-            capacity
-        ))
+            if last_class and last_class['ClassID']:
+                last_id_num = int(last_class['ClassID'].replace('C', ''))
+                target_class_id = f"C{last_id_num + 1:03d}"
+            else:
+                target_class_id = "C001"
+
+            cursor.execute("""
+                INSERT INTO class_catalog
+                (ClassID, ClassName, Description, Capacity)
+                VALUES (%s, %s, %s, %s)
+            """, (
+                target_class_id,
+                class_name.strip(),
+                description,
+                capacity
+            ))
 
         cursor.execute("""
             INSERT INTO class_schedule
             (ClassID, ClassDate, ClassTime)
             VALUES (%s, %s, %s)
         """, (
-            class_id,
+            target_class_id,
             class_date,
             class_time
         ))
@@ -1265,20 +1280,18 @@ def create_full_class(
             schedule_id
         ))
 
-
         conn.commit()
 
         return {
-            "message": "Class created successfully",
-            "Schedule_ID": schedule_id
+            "message": "Class and Schedule processed successfully",
+            "Class_ID": target_class_id,
+            "Schedule_ID": schedule_id,
+            "Is_New_Catalog": not bool(existing_class)
         }
 
-
     except Exception as e:
-
         conn.rollback()
         return {"error": str(e)}
-
 
     finally:
         cursor.close()
