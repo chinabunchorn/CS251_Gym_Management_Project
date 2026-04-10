@@ -1537,17 +1537,19 @@ def manager_update_member(
             SET FirstName=%s, LastName=%s, PASSWORD=%s, Bdate=%s, MedRec=%s, Weight=%s, Height=%s
             WHERE Member_ID=%s
         """, (firstname, lastname, hashed_pw, bdate, medrec, weight, height, member_id))
-        cursor.execute("""
-            UPDATE Subscribes_to
-            SET packageID=%s
-            WHERE Member_ID=%s AND Enddate >= CURDATE()
-        """, (package_id, member_id))
 
-        cursor.execute("""
-            UPDATE Trains
-            SET EmployeeID=%s
-            WHERE Member_ID=%s AND Status='Active'
-        """, (trainer_id, member_id))
+        if package_id is not None:
+            cursor.execute("""
+                UPDATE Subscribes_to
+                SET packageID=%s
+                WHERE Member_ID=%s AND Enddate >= CURDATE()
+            """, (package_id, member_id))
+        if trainer_id is not None:
+            cursor.execute("""
+                UPDATE Trains
+                SET EmployeeID=%s
+                WHERE Member_ID=%s AND Status='Active'
+            """, (trainer_id, member_id))
 
         conn.commit()
         return {"message": "Member updated successfully", "Member_ID": member_id}
