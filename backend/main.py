@@ -169,15 +169,40 @@ def get_classes(user=Depends(get_current_user_any_role)):
     return classes
 
 @app.get("/profile/{member_id}")
-def get_idiv_member(member_id: int,user=Depends(get_current_user_any_role)):
+def get_idiv_member(member_id: int, user=Depends(get_current_user_any_role)):
 
     conn = get_connection()
     cursor = conn.cursor(dictionary=True)
 
     query = """
-    SELECT *
-    FROM member
-    WHERE Member_ID = %s
+    SELECT
+        m.Member_ID,
+        m.FirstName,
+        m.LastName,
+        m.Bdate,
+        m.Weight,
+        m.Height,
+        m.MedRec,
+        p.packName,
+
+        CONCAT(e.FirstName, ' ', e.LastName) AS TrainerName
+
+    FROM Member m
+
+    LEFT JOIN Subscribes_to s
+        ON m.Member_ID = s.Member_ID
+
+    LEFT JOIN Package p
+        ON s.packageID = p.packageID
+
+    LEFT JOIN Trains t
+        ON m.Member_ID = t.Member_ID
+        AND t.Status = 'Active'
+
+    LEFT JOIN Employee e
+        ON t.EmployeeID = e.EmployeeID
+
+    WHERE m.Member_ID = %s
     """
 
     cursor.execute(query, (member_id,))
