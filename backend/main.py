@@ -1729,9 +1729,6 @@ def manager_update_trainer(
     employee_id: int,
     firstname: str,
     lastname: str,
-    salary: float,
-    username: str,
-    password: str,
     manager_id: int = None,
     contract_type: str = "Full-time",
     specialty: str = None,
@@ -1739,13 +1736,13 @@ def manager_update_trainer(
 ):
     conn = get_connection()
     cursor = conn.cursor()
+
     try:
-        hashed_pw = hash_password(password)
         cursor.execute("""
             UPDATE Employee
-            SET FirstName=%s, LastName=%s, Salary=%s, Username=%s, PASSWORD=%s, ManagerID=%s, Contract_Type=%s
+            SET FirstName=%s, LastName=%s, ManagerID=%s, Contract_Type=%s
             WHERE EmployeeID=%s
-        """, (firstname, lastname, salary, username, hashed_pw, manager_id, contract_type, employee_id))
+        """, (firstname, lastname, manager_id, contract_type, employee_id))
 
         cursor.execute("""
             UPDATE Trainer
@@ -1755,9 +1752,11 @@ def manager_update_trainer(
 
         conn.commit()
         return {"message": "Trainer updated successfully"}
+
     except Exception as e:
         conn.rollback()
         raise HTTPException(status_code=400, detail=str(e))
+
     finally:
         cursor.close()
         conn.close()
