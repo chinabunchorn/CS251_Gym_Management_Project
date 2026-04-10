@@ -380,7 +380,6 @@ def member_dashboard(user=Depends(require_member)):
     cursor = conn.cursor(dictionary=True)
 
 
-    # MEMBER INFO
     cursor.execute("""
         SELECT FirstName, LastName
         FROM Member
@@ -389,7 +388,6 @@ def member_dashboard(user=Depends(require_member)):
     member = cursor.fetchone()
 
 
-    # PACKAGE INFO
     cursor.execute("""
         SELECT
             p.packName,
@@ -406,8 +404,6 @@ def member_dashboard(user=Depends(require_member)):
     """, (member_id,))
     package = cursor.fetchone()
 
-
-    # LOCKER INFO
     cursor.execute("""
         SELECT
             l.LockerID,
@@ -421,8 +417,6 @@ def member_dashboard(user=Depends(require_member)):
     """, (member_id,))
     locker = cursor.fetchone()
 
-
-    # TRAINER INFO
     cursor.execute("""
         SELECT
             CONCAT(e.FirstName,' ',e.LastName) AS TrainerName
@@ -435,8 +429,6 @@ def member_dashboard(user=Depends(require_member)):
     """, (member_id,))
     trainer = cursor.fetchone()
 
-
-    # UPCOMING CLASSES
     cursor.execute("""
         SELECT
             cc.ClassName,
@@ -454,8 +446,6 @@ def member_dashboard(user=Depends(require_member)):
     """, (member_id,))
     upcoming_classes = cursor.fetchall()
 
-
-    # CHECK-IN TODAY STATUS
     cursor.execute("""
         SELECT COUNT(*) AS checked_today
         FROM Attendance
@@ -515,16 +505,12 @@ def get_dashboard_stats(user=Depends(get_current_user_any_role)):
     conn = get_connection()
     cursor = conn.cursor(dictionary=True)
 
-
-    # count all members
     cursor.execute("""
         SELECT COUNT(*) AS total_members
         FROM Member
     """)
     members = cursor.fetchone()["total_members"]
 
-
-    # count active trainers
     cursor.execute("""
         SELECT COUNT(*) AS total_trainers
         FROM Trainer t
@@ -585,7 +571,6 @@ def login(payload: UserLogin):
     conn = get_connection()
     cursor = conn.cursor(dictionary=True)
 
-    # Check Member table
     cursor.execute(
         "SELECT * FROM Member WHERE Username = %s",
         (payload.username,)
@@ -596,7 +581,7 @@ def login(payload: UserLogin):
         role = "member"
 
     else:
-        # Check Employee table
+
         cursor.execute(
             "SELECT * FROM Employee WHERE Username = %s",
             (payload.username,)
@@ -610,7 +595,7 @@ def login(payload: UserLogin):
 
         employee_id = user["EmployeeID"]
 
-        # Check Manager table
+
         cursor.execute(
             "SELECT * FROM Manager WHERE EmployeeID = %s",
             (employee_id,)
@@ -620,7 +605,7 @@ def login(payload: UserLogin):
             role = "manager"
 
         else:
-            # Check Trainer table
+
             cursor.execute(
                 "SELECT * FROM Trainer WHERE EmployeeID = %s",
                 (employee_id,)
@@ -632,14 +617,11 @@ def login(payload: UserLogin):
                 role = "employee"
 
 
-    # Verify password BEFORE closing connection
     if not verify_password(payload.password, user["PASSWORD"]):
         cursor.close()
         conn.close()
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
-
-    # Create token (now includes ID ✅)
     token = create_access_token({
         "sub": user["Username"],
         "role": role,
@@ -693,7 +675,6 @@ def assign_trainer(employee_id: int, schedule_id: int,user=Depends(get_current_u
     cursor = conn.cursor(dictionary=True)
 
 
-    # Check trainer exists
     trainer_check = """
     SELECT EmployeeID
     FROM Trainer
@@ -709,7 +690,6 @@ def assign_trainer(employee_id: int, schedule_id: int,user=Depends(get_current_u
         return {"message": "Trainer not found"}
 
 
-    # Check schedule exists
     schedule_check = """
     SELECT Schedule_ID
     FROM Class_Schedule
@@ -725,7 +705,6 @@ def assign_trainer(employee_id: int, schedule_id: int,user=Depends(get_current_u
         return {"message": "Schedule not found"}
 
 
-    # Assign trainer to class
     insert_query = """
     INSERT INTO Leads (EmployeeID, Schedule_ID)
     VALUES (%s, %s)
@@ -750,7 +729,6 @@ def require_equipment(class_id: str, equipment_id: str,user=Depends(get_current_
     cursor = conn.cursor(dictionary=True)
 
 
-    # check class exists
     class_check = """
     SELECT ClassID
     FROM class_catalog
@@ -764,9 +742,6 @@ def require_equipment(class_id: str, equipment_id: str,user=Depends(get_current_
         cursor.close()
         conn.close()
         return {"message": "Class not found"}
-
-
-    # check equipment exists
     equipment_check = """
     SELECT Equipment_ID
     FROM Gym_Equipment
@@ -781,8 +756,6 @@ def require_equipment(class_id: str, equipment_id: str,user=Depends(get_current_
         conn.close()
         return {"message": "Equipment not found"}
 
-
-    # insert relationship
     insert_query = """
     INSERT INTO Requires (ClassID, Equipment_ID)
     VALUES (%s, %s)
@@ -836,7 +809,6 @@ def rent_locker(
     conn = get_connection()
     cursor = conn.cursor(dictionary=True)
 
-    # Step 1: check locker availability first
     check_query = """
     SELECT STATUS
     FROM Locker
@@ -872,8 +844,6 @@ def rent_locker(
         price
     ))
 
-
-    # Step 3: update locker status
     update_query = """
     UPDATE Locker
     SET STATUS = 'Occupied'
@@ -1041,7 +1011,7 @@ def create_locker(locker_id: str, zone: str,user=Depends(get_current_user_any_ro
     conn = get_connection()
     cursor = conn.cursor(dictionary=True)
 
-    # Check if locker already exists
+
     check_query = """
     SELECT LockerID
     FROM Locker
@@ -1056,7 +1026,6 @@ def create_locker(locker_id: str, zone: str,user=Depends(get_current_user_any_ro
         conn.close()
         return {"message": "Locker already exists"}
 
-    # Insert new locker
     insert_query = """
     INSERT INTO Locker (LockerID, STATUS, Zone)
     VALUES (%s, 'Available', %s)
@@ -1084,7 +1053,6 @@ def create_equipment(
     conn = get_connection()
     cursor = conn.cursor(dictionary=True)
 
-    # check duplicate equipment id
     check_query = """
     SELECT Equipment_ID
     FROM Gym_Equipment
@@ -1141,7 +1109,6 @@ def create_full_class(
 
     try:
 
-        # 1️⃣ check class already exists
         cursor.execute("""
             SELECT ClassID
             FROM class_catalog
@@ -1151,8 +1118,6 @@ def create_full_class(
         if cursor.fetchone():
             return {"message": "Class already exists"}
 
-
-        # 2️⃣ create class
         cursor.execute("""
             INSERT INTO class_catalog
             (ClassID, ClassName, Description, Capacity)
@@ -1164,8 +1129,6 @@ def create_full_class(
             capacity
         ))
 
-
-        # 3️⃣ create schedule
         cursor.execute("""
             INSERT INTO class_schedule
             (ClassID, ClassDate, ClassTime)
@@ -1178,8 +1141,6 @@ def create_full_class(
 
         schedule_id = cursor.lastrowid
 
-
-        # 4️⃣ assign trainer
         cursor.execute("""
             INSERT INTO leads
             (EmployeeID, Schedule_ID)
@@ -1222,8 +1183,6 @@ def create_promotion(
     conn = get_connection()
     cursor = conn.cursor(dictionary=True)
 
-
-    # check promo already exists
     check_query = """
     SELECT PromoCode
     FROM Promotion
@@ -1238,8 +1197,6 @@ def create_promotion(
         conn.close()
         return {"message": "PromoCode already exists"}
 
-
-    # insert promotion
     promo_query = """
     INSERT INTO Promotion
     (PromoCode, DiscountRate, StartDate, EndDate)
@@ -1254,7 +1211,6 @@ def create_promotion(
     ))
 
 
-    # link promotion to package
     apply_query = """
     INSERT INTO Applies_to
     (packageID, PromoCode)
@@ -1289,7 +1245,6 @@ def create_package(
     conn = get_connection()
     cursor = conn.cursor(dictionary=True)
 
-    # check duplicate packageID
     check_query = """
     SELECT packageID
     FROM Package
@@ -1328,75 +1283,75 @@ def create_package(
         "packageID": package_id
     }
 
-@app.put("/employee/update")
-def update_employee(employee_id: int, salary: float, status: str,user=Depends(get_current_user_any_role)):
+# @app.put("/employee/update")
+# def update_employee(employee_id: int, salary: float, status: str,user=Depends(get_current_user_any_role)):
 
-    conn = get_connection()
-    cursor = conn.cursor()
+#     conn = get_connection()
+#     cursor = conn.cursor()
 
-    query = """
-    UPDATE Employee
-    SET Salary = %s,
-        STATUS = %s
-    WHERE EmployeeID = %s
-    """
+#     query = """
+#     UPDATE Employee
+#     SET Salary = %s,
+#         STATUS = %s
+#     WHERE EmployeeID = %s
+#     """
 
-    cursor.execute(query, (salary, status, employee_id))
-    conn.commit()
+#     cursor.execute(query, (salary, status, employee_id))
+#     conn.commit()
 
-    cursor.close()
-    conn.close()
+#     cursor.close()
+#     conn.close()
 
-    return {"message": "Employee updated successfully"}
+#     return {"message": "Employee updated successfully"}
 
-@app.put("/trainer/update")
-def update_trainer(employee_id: int, specialty: str,user=Depends(get_current_user_any_role)):
+# @app.put("/trainer/update")
+# def update_trainer(employee_id: int, specialty: str,user=Depends(get_current_user_any_role)):
 
-    conn = get_connection()
-    cursor = conn.cursor()
+#     conn = get_connection()
+#     cursor = conn.cursor()
 
-    query = """
-    UPDATE Trainer
-    SET Specialty = %s
-    WHERE EmployeeID = %s
-    """
+#     query = """
+#     UPDATE Trainer
+#     SET Specialty = %s
+#     WHERE EmployeeID = %s
+#     """
 
-    cursor.execute(query, (specialty, employee_id))
-    conn.commit()
+#     cursor.execute(query, (specialty, employee_id))
+#     conn.commit()
 
-    cursor.close()
-    conn.close()
+#     cursor.close()
+#     conn.close()
 
-    return {"message": "Trainer specialty updated successfully"}
+#     return {"message": "Trainer specialty updated successfully"}
 
-@app.put("/equipment/update")
-def update_equipment(equipment_id: str, status: str,user=Depends(get_current_user_any_role)):
+# @app.put("/equipment/update")
+# def update_equipment(equipment_id: str, status: str,user=Depends(get_current_user_any_role)):
 
-    conn = get_connection()
-    cursor = conn.cursor()
+#     conn = get_connection()
+#     cursor = conn.cursor()
 
-    query = """
-    UPDATE Gym_Equipment
-    SET STATUS = %s
-    WHERE Equipment_ID = %s
-    """
+#     query = """
+#     UPDATE Gym_Equipment
+#     SET STATUS = %s
+#     WHERE Equipment_ID = %s
+#     """
 
-    cursor.execute(query, (status, equipment_id))
-    conn.commit()
+#     cursor.execute(query, (status, equipment_id))
+#     conn.commit()
 
-    if cursor.rowcount == 0:
-        cursor.close()
-        conn.close()
-        return {"message": "Equipment not found"}
+#     if cursor.rowcount == 0:
+#         cursor.close()
+#         conn.close()
+#         return {"message": "Equipment not found"}
 
-    cursor.close()
-    conn.close()
+#     cursor.close()
+#     conn.close()
 
-    return {
-        "message": "Equipment status updated successfully",
-        "Equipment_ID": equipment_id,
-        "New_Status": status
-    }
+#     return {
+#         "message": "Equipment status updated successfully",
+#         "Equipment_ID": equipment_id,
+#         "New_Status": status
+#     }
 
 @app.put("/trainer/member/update-status")
 def update_trainer_member_status(
@@ -1436,14 +1391,10 @@ def update_trainer_member_status(
         "message": "Trainer-member status updated successfully"
     }
 
-# ==========================================
-# MANAGER ROUTES: UPDATE (PUT) & DELETE (DELETE)
-# ==========================================
 
-# 1. Class
 @app.put("/manager/class/update")
-def manager_update_class(
-    class_id: str,
+def update_full_class(
+    schedule_id: int,
     class_name: str,
     description: str,
     capacity: int,
@@ -1452,35 +1403,69 @@ def manager_update_class(
     employee_id: int,
     user=Depends(require_manager)
 ):
+
     conn = get_connection()
     cursor = conn.cursor(dictionary=True)
+
     try:
         cursor.execute("""
+            SELECT ClassID
+            FROM class_schedule
+            WHERE Schedule_ID = %s
+        """, (schedule_id,))
+
+        result = cursor.fetchone()
+
+        if result is None:
+            return {"message": "Schedule not found"}
+
+        class_id = result["ClassID"]
+
+        cursor.execute("""
             UPDATE class_catalog
-            SET ClassName = %s, Description = %s, Capacity = %s
+            SET ClassName = %s,
+                Description = %s,
+                Capacity = %s
             WHERE ClassID = %s
-        """, (class_name, description, capacity, class_id))
+        """, (
+            class_name,
+            description,
+            capacity,
+            class_id
+        ))
+
 
         cursor.execute("""
             UPDATE class_schedule
-            SET ClassDate = %s, ClassTime = %s
-            WHERE ClassID = %s
-        """, (class_date, class_time, class_id))
+            SET ClassDate = %s,
+                ClassTime = %s
+            WHERE Schedule_ID = %s
+        """, (
+            class_date,
+            class_time,
+            schedule_id
+        ))
 
-        cursor.execute("SELECT Schedule_ID FROM class_schedule WHERE ClassID = %s", (class_id,))
-        schedule = cursor.fetchone()
-        if schedule:
-            cursor.execute("""
-                UPDATE leads
-                SET EmployeeID = %s
-                WHERE Schedule_ID = %s
-            """, (employee_id, schedule["Schedule_ID"]))
+
+        cursor.execute("""
+            UPDATE leads
+            SET EmployeeID = %s
+            WHERE Schedule_ID = %s
+        """, (
+            employee_id,
+            schedule_id
+        ))
+
 
         conn.commit()
+
         return {"message": "Class updated successfully"}
+
+
     except Exception as e:
         conn.rollback()
-        raise HTTPException(status_code=400, detail=str(e))
+        return {"error": str(e)}
+
     finally:
         cursor.close()
         conn.close()
@@ -1511,7 +1496,6 @@ def manager_delete_class(class_id: str, user=Depends(require_manager)):
         cursor.close()
         conn.close()
 
-# 2. Member
 @app.put("/manager/member/update")
 def manager_update_member(
     member_id: int,
@@ -1587,7 +1571,6 @@ def manager_delete_member(member_id: int, user=Depends(require_manager)):
         cursor.close()
         conn.close()
 
-# 3. Trainer
 @app.put("/manager/trainer/update")
 def manager_update_trainer(
     employee_id: int,
@@ -1645,7 +1628,6 @@ def manager_delete_trainer(employee_id: int, user=Depends(require_manager)):
         cursor.close()
         conn.close()
 
-# 4. Promotion
 @app.put("/manager/promotion/update")
 def manager_update_promotion(
     promo_code: str,
@@ -1695,7 +1677,6 @@ def manager_delete_promotion(promo_code: str, user=Depends(require_manager)):
         cursor.close()
         conn.close()
 
-# 5. Locker
 @app.put("/manager/locker/update")
 def manager_update_locker(
     locker_id: str,
@@ -1731,7 +1712,6 @@ def manager_delete_locker(locker_id: str, user=Depends(require_manager)):
         cursor.close()
         conn.close()
 
-# 6. Equipment
 @app.put("/manager/equipment/update")
 def manager_update_equipment(
     equipment_id: str,
