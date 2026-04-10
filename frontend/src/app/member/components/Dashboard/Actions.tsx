@@ -1,9 +1,9 @@
 "uses client";
 import { useRouter } from "next/navigation";
-import ClassesIcon from "./icons/ClassesIcon";
-import CalendarIcon from "./icons/CalendarIcon";
-import LockerIcon from "./icons/LockerIcon";
-import StarIcon from "./icons/StarIcon";
+import ClassesIcon from "../icons/ClassesIcon";
+import CalendarIcon from "../icons/CalendarIcon";
+import LockerIcon from "../icons/LockerIcon";
+import StarIcon from "../icons/StarIcon";
 
 export default function Actions() {
     const router = useRouter();
