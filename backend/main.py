@@ -56,6 +56,19 @@ def get_trainers(user=Depends(get_current_user_any_role)):
 
     return result
 
+@app.get("/packages")
+def get_all_packages(user=Depends(get_current_user_any_role)):
+    conn = get_connection()
+    cursor = conn.cursor(dictionary=True)
+    try:
+        cursor.execute("SELECT packageID, packName FROM package")
+        return cursor.fetchall()
+    except Exception as e:
+        return {"error": str(e)}
+    finally:
+        cursor.close()
+        conn.close()
+
 @app.get("/equipment")
 def get_equipment(user=Depends(get_current_user_any_role)):
 
@@ -991,75 +1004,51 @@ def create_member(
     medrec: str,
     weight: float,
     height: float,
-    package_id: str,
-    trainer_id: int,
+    package_id: str = None, # ทำให้เป็น Optional
+    trainer_id: int = None, # ทำให้เป็น Optional
     user=Depends(require_manager)
 ):
-
     conn = get_connection()
     cursor = conn.cursor()
 
-    username = firstname.lower()
+    try:
+        username = firstname.lower()
+        raw_password = bdate.replace("-", "")
+        hashed_pw = hash_password(raw_password)
 
-    raw_password = bdate.replace("-", "")
+        member_query = """
+        INSERT INTO Member
+        (Username, Password, FirstName, LastName, Bdate, MedRec, Weight, Height)
+        VALUES (%s,%s,%s,%s,%s,%s,%s,%s)
+        """
+        cursor.execute(member_query, (username, hashed_pw, firstname, lastname, bdate, medrec, weight, height))
+        member_id = cursor.lastrowid
 
-    hashed_pw = hash_password(raw_password)
+        if package_id:
+            subscribe_query = """
+            INSERT INTO Subscribes_to
+            (packageID, Member_ID, Startdate, Enddate, P_method)
+            VALUES (%s,%s,CURDATE(),DATE_ADD(CURDATE(), INTERVAL 1 MONTH),'PromptPay')
+            """
+            cursor.execute(subscribe_query, (package_id, member_id))
 
-    member_query = """
-    INSERT INTO Member
-    (Username, Password, FirstName, LastName, Bdate, MedRec, Weight, Height)
-    VALUES (%s,%s,%s,%s,%s,%s,%s,%s)
-    """
+        if trainer_id:
+            trainer_query = """
+            INSERT INTO Trains
+            (EmployeeID, Member_ID, Status, StartDate)
+            VALUES (%s,%s,'Active',CURDATE())
+            """
+            cursor.execute(trainer_query, (trainer_id, member_id))
 
-    cursor.execute(member_query, (
-        username,
-        hashed_pw,
-        firstname,
-        lastname,
-        bdate,
-        medrec,
-        weight,
-        height
-    ))
-
-    member_id = cursor.lastrowid
-
-
-    subscribe_query = """
-    INSERT INTO Subscribes_to
-    (packageID, Member_ID, Startdate, Enddate, P_method)
-    VALUES
-    (%s,%s,CURDATE(),DATE_ADD(CURDATE(), INTERVAL 1 MONTH),'PromptPay')
-    """
-
-    cursor.execute(subscribe_query, (
-        package_id,
-        member_id
-    ))
-
-
-    trainer_query = """
-    INSERT INTO Trains
-    (EmployeeID, Member_ID, Status, StartDate)
-    VALUES
-    (%s,%s,'Active',CURDATE())
-    """
-
-    cursor.execute(trainer_query, (
-        trainer_id,
-        member_id
-    ))
-
-    conn.commit()
-
-    cursor.close()
-    conn.close()
-
-    return {
-        "message": "Member created successfully",
-        "Member_ID": member_id,
-        "Username": username
-    }
+        conn.commit()
+        return {"message": "Member created successfully", "Member_ID": member_id}
+        
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=400, detail=str(e))
+    finally:
+        cursor.close()
+        conn.close()
 
 
 @app.post("/employee/create")
@@ -1485,43 +1474,53 @@ def create_package(
 #         "New_Status": status
 #     }
 
-@app.put("/trainer/member/update-status")
-def update_trainer_member_status(
-    employee_id: int,
+@app.put("/manager/member/update")
+def manager_update_member(
     member_id: int,
-    status: str,
-    user=Depends(get_current_user_any_role)
+    firstname: str,
+    lastname: str,
+    bdate: str,
+    medrec: str,
+    weight: float,
+    height: float,
+    package_id: str = None, 
+    trainer_id: int = None, 
+    user=Depends(require_manager)
 ):
-
     conn = get_connection()
     cursor = conn.cursor()
 
-    query = """
-    UPDATE Trains
-    SET Status = %s
-    WHERE EmployeeID = %s
-    AND Member_ID = %s
-    """
+    try:
+        cursor.execute("""
+            UPDATE Member
+            SET FirstName=%s, LastName=%s, Bdate=%s, MedRec=%s, Weight=%s, Height=%s
+            WHERE Member_ID=%s
+        """, (firstname, lastname, bdate, medrec, weight, height, member_id))
 
-    cursor.execute(query, (
-        status,
-        employee_id,
-        member_id
-    ))
+        if package_id:
+            cursor.execute("""
+                UPDATE Subscribes_to
+                SET packageID=%s
+                WHERE Member_ID=%s AND Enddate >= CURDATE()
+            """, (package_id, member_id))
 
-    conn.commit()
+        if trainer_id:
+            cursor.execute("""
+                UPDATE Trains
+                SET EmployeeID=%s
+                WHERE Member_ID=%s AND Status='Active'
+            """, (trainer_id, member_id))
 
-    if cursor.rowcount == 0:
+        conn.commit()
+        return {"message": "Member updated successfully"}
+
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=400, detail=str(e))
+
+    finally:
         cursor.close()
         conn.close()
-        return {"message": "Relationship not found"}
-
-    cursor.close()
-    conn.close()
-
-    return {
-        "message": "Trainer-member status updated successfully"
-    }
 
 
 @app.put("/manager/class/update")
