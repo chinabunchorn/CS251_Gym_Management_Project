@@ -898,24 +898,23 @@ def rent_locker(
 def create_member(
     firstname: str,
     lastname: str,
-    password: str,
     bdate: str,
     medrec: str,
     weight: float,
     height: float,
     package_id: str,
     trainer_id: int,
-    user=Depends(get_current_user_any_role)
+    user=Depends(require_manager)
 ):
 
     conn = get_connection()
     cursor = conn.cursor()
 
-    # auto-generate username from firstname
     username = firstname.lower()
 
-    # hash password
-    hashed_pw = hash_password(password)
+    raw_password = bdate.replace("-", "")
+
+    hashed_pw = hash_password(raw_password)
 
     member_query = """
     INSERT INTO Member
@@ -1518,7 +1517,6 @@ def manager_update_member(
     member_id: int,
     firstname: str,
     lastname: str,
-    password: str,
     bdate: str,
     medrec: str,
     weight: float,
@@ -1529,13 +1527,19 @@ def manager_update_member(
 ):
     conn = get_connection()
     cursor = conn.cursor()
+
     try:
-        hashed_pw = hash_password(password)
         cursor.execute("""
             UPDATE Member
-            SET FirstName=%s, LastName=%s, PASSWORD=%s, Bdate=%s, MedRec=%s, Weight=%s, Height=%s
+            SET FirstName=%s,
+                LastName=%s,
+                Bdate=%s,
+                MedRec=%s,
+                Weight=%s,
+                Height=%s
             WHERE Member_ID=%s
-        """, (firstname, lastname, hashed_pw, bdate, medrec, weight, height, member_id))
+        """, (firstname, lastname, bdate, medrec, weight, height, member_id))
+
 
         cursor.execute("""
             UPDATE Subscribes_to
@@ -1543,17 +1547,22 @@ def manager_update_member(
             WHERE Member_ID=%s AND Enddate >= CURDATE()
         """, (package_id, member_id))
 
+
         cursor.execute("""
             UPDATE Trains
             SET EmployeeID=%s
             WHERE Member_ID=%s AND Status='Active'
         """, (trainer_id, member_id))
 
+
         conn.commit()
+
         return {"message": "Member updated successfully"}
+
     except Exception as e:
         conn.rollback()
         raise HTTPException(status_code=400, detail=str(e))
+
     finally:
         cursor.close()
         conn.close()
