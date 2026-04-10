@@ -12,10 +12,10 @@ export default function StarIcon({ className = "" }: IconProps) {
       fill="currentColor"
       xmlns="http://www.w3.org/2000/svg"
     >
-      <g clip-path="url(#clip0_543_924)">
+      <g clipPath="url(#clip0_543_924)">
         <path
-          fill-rule="evenodd"
-          clip-rule="evenodd"
+          fillRule="evenodd"
+          clipRule="evenodd"
           d="M7.93486 0.654804C7.61738 -0.218273 6.38261 -0.218263 6.06513 0.654805L4.62238 4.62238L0.654803 6.06514C-0.218272 6.38262 -0.218263 7.61738 0.654805 7.93486L4.62238 9.37762L6.06513 13.3452C6.38261 14.2182 7.61738 14.2182 7.93486 13.3452L9.37761 9.37762L13.3452 7.93486C14.2183 7.61738 14.2183 6.38262 13.3452 6.06514L9.37761 4.62238L7.93486 0.654804Z"
           fill="currentColor"
         />
