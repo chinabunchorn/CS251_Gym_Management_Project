@@ -43,7 +43,7 @@ export default function Actions() {
           <button
             key={item.name}
             onClick={() => router.push(item.path)}
-            className="flex items-center gap-3 bg-white p-4 rounded-2xl shadow-sm active:scale-95 transition"
+            className="flex items-center gap-3 bg-white p-4 rounded-2xl shadow-sm active:scale-95 transition cursor-pointer"
           >
             {/* Icon container */}
             <div className={`p-2 rounded-xl ${item.color}`}>

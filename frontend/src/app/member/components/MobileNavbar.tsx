@@ -1,7 +1,9 @@
 /* eslint-disable @next/next/no-img-element */
 "use client";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { Member } from "../type";
 
 type DrawerProps = {
   open: boolean;
@@ -10,6 +12,9 @@ type DrawerProps = {
 
 export default function MobileNavbar({ open, setOpen }: DrawerProps) {
   const pathName = usePathname();
+  const router = useRouter();
+
+  const [member, setMember] = useState<Member | null>(null);
 
   // Link to other pages here
   const menuItems = [
@@ -42,6 +47,50 @@ export default function MobileNavbar({ open, setOpen }: DrawerProps) {
       path: "/member/booking",
     },
   ];
+  useEffect(() => {
+    const fetchMember = async () => {
+      try {
+        const token = localStorage.getItem("token");
+
+        const res = await fetch("http://localhost:8000/member/dashboard", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (!res.ok) return;
+
+        const data = await res.json();
+        setMember(data);
+      } catch (err) {
+        console.error("Failed to fetch member:", err);
+      }
+    };
+
+    fetchMember();
+  }, []);
+
+  const handleLogout = async () => {
+    try {
+      const token = localStorage.getItem("token");
+
+      await fetch("http://localhost:8000/logout", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      localStorage.removeItem("token");
+      router.push("/login");
+    } catch (err) {
+      console.error("Logout failed:", err);
+    }
+  };
+
+  const fullName = member
+      ? `${member.FirstName} ${member.LastName}`
+      : "Loading...";
 
   return (
     <>
@@ -68,7 +117,7 @@ export default function MobileNavbar({ open, setOpen }: DrawerProps) {
               height={70}
               className="rounded-full border-2 border-white"
             />
-            <p className="mt-3 font-semibold">Samantha Jones</p>
+            <p className="mt-3 font-semibold">{fullName}</p>
           </div>
         </div>
 
@@ -100,9 +149,12 @@ export default function MobileNavbar({ open, setOpen }: DrawerProps) {
             ))}
           </div>
 
-          <div className="border-t pt-4 text-red-500 cursor-pointer">
+          <button
+            onClick={handleLogout}
+            className="w-full text-left border-t pt-4 mt-4 text-red-500 hover:text-red-600 cursor-pointer"
+          >
             Sign out
-          </div>
+          </button>
         </div>
       </div>
 
