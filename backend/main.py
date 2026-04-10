@@ -300,33 +300,37 @@ def get_idiv_member(member_id: int, user=Depends(get_current_user_any_role)):
 
     query = """
     SELECT
-        m.Member_ID,
-        m.FirstName,
-        m.LastName,
-        m.Bdate,
-        m.Weight,
-        m.Height,
-        m.MedRec,
-        p.packName,
+    m.Member_ID,
+    m.FirstName,
+    m.LastName,
+    m.Bdate,
+    m.Weight,
+    m.Height,
+    m.MedRec,
 
-        CONCAT(e.FirstName, ' ', e.LastName) AS TrainerName
+    p.packageID,
+    p.packName,
 
-    FROM Member m
+    e.EmployeeID AS TrainerID,
+    CONCAT(e.FirstName, ' ', e.LastName) AS TrainerName
 
-    LEFT JOIN Subscribes_to s
-        ON m.Member_ID = s.Member_ID
+FROM Member m
 
-    LEFT JOIN Package p
-        ON s.packageID = p.packageID
+LEFT JOIN Subscribes_to s
+    ON m.Member_ID = s.Member_ID
+    AND s.Enddate >= CURDATE()
 
-    LEFT JOIN Trains t
-        ON m.Member_ID = t.Member_ID
-        AND t.Status = 'Active'
+LEFT JOIN Package p
+    ON s.packageID = p.packageID
 
-    LEFT JOIN Employee e
-        ON t.EmployeeID = e.EmployeeID
+LEFT JOIN Trains t
+    ON m.Member_ID = t.Member_ID
+    AND t.Status = 'Active'
 
-    WHERE m.Member_ID = %s
+LEFT JOIN Employee e
+    ON t.EmployeeID = e.EmployeeID
+
+WHERE m.Member_ID = %s
     """
 
     cursor.execute(query, (member_id,))
