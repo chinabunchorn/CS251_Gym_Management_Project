@@ -4,6 +4,16 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Member } from "../type";
+import HomeIcon from "./icons/HomeIcon";
+import ClassesIcon from "./icons/ClassesIcon";
+import StarIcon from "./icons/StarIcon";
+import LockerIcon from "./icons/LockerIcon";
+import JumpRopeIcon from "./icons/JumpRopeIcon";
+import DiscountIcon from "./icons/DiscountIcon";
+import TicketIcon from "./icons/TicketIcon";
+import CogIcon from "./icons/CogIcon";
+import CreditCardIcon from "./icons/CreditCardIcon";
+import SignOutIcon from "./icons/SignOutIcon";
 
 type DrawerProps = {
   open: boolean;
@@ -23,33 +33,44 @@ export default function MobileNavbar({ open, setOpen, member }: Props) {
     {
       name: "Home",
       path: "/member",
+      icon: HomeIcon,
     },
     {
       name: "Classes",
       path: "/member/classes",
+      icon: ClassesIcon,
     },
     {
       name: "Trainers",
       path: "/member/trainer",
+      icon: StarIcon,
     },
     {
       name: "Lockers",
       path: "/member/locker",
+      icon: LockerIcon,
     },
     {
       name: "Equipment",
       path: "/member/equipment",
+      icon: JumpRopeIcon,
     },
     {
       name: "Promotions",
       path: "/member/promotions",
+      icon: DiscountIcon,
     },
     {
       name: "My Bookings",
       path: "/member/booking",
+      icon: TicketIcon,
     },
   ];
 
+  const profileItems = [
+    { name: "Settings", icon: CogIcon },
+    { name: "Membership", icon: CreditCardIcon },
+  ];
   const handleLogout = async () => {
     try {
       const token = localStorage.getItem("token");
@@ -69,8 +90,8 @@ export default function MobileNavbar({ open, setOpen, member }: Props) {
   };
 
   const fullName = member
-      ? `${member.FirstName} ${member.LastName}`
-      : "Loading...";
+    ? `${member.FirstName} ${member.LastName}`
+    : "Loading...";
 
   return (
     <>
@@ -102,37 +123,48 @@ export default function MobileNavbar({ open, setOpen, member }: Props) {
         </div>
 
         <div className="p-4 text-sm text-gray-700 space-y-4">
-          {menuItems.map((item) => (
-            <Link
-              key={item.name}
-              href={item.path}
-              onClick={() => setOpen(false)}
-              className={`block py-2 px-3 rounded-lg ${
-                pathName === item.path
-                  ? "bg-purple-100 text-purple-600"
-                  : "hover:bg-gray-100"
-              }`}
-            >
-              {item.name}
-            </Link>
-          ))}
+          {menuItems.map((item) => {
+            const Icon = item.icon;
+
+            return (
+              <Link
+                key={item.name}
+                href={item.path}
+                onClick={() => setOpen(false)}
+                className={`flex items-center gap-3 py-2 px-3 rounded-lg ${
+                  pathName === item.path
+                    ? "bg-purple-100 text-purple-600"
+                    : "hover:bg-gray-100"
+                }`}
+              >
+                <Icon className="w-5 h-5" />
+                <span>{item.name}</span>
+              </Link>
+            );
+          })}
 
           <div className="border-t pt-4">
             <p className="text-gray-400 mb-2">Profile</p>
-            {["Settings", "Membership"].map((item) => (
-              <div
-                key={item}
-                className="py-2 px-2 rounded-lg hover:bg-gray-100 cursor-pointer"
-              >
-                {item}
-              </div>
-            ))}
+            {profileItems.map((item) => {
+              const Icon = item.icon;
+
+              return (
+                <div
+                  key={item.name}
+                  className="flex items-center gap-3 py-2 px-2 rounded-lg hover:bg-gray-100 cursor-pointer"
+                >
+                  <Icon className="w-5 h-5 text-gray-500" />
+                  <span>{item.name}</span>
+                </div>
+              );
+            })}
           </div>
 
           <button
             onClick={handleLogout}
-            className="w-full text-left border-t pt-4 mt-4 text-red-500 hover:text-red-600 cursor-pointer"
+            className="w-full flex gap-3 text-left border-t pt-4 mt-4 text-red-500 hover:text-red-600 cursor-pointer"
           >
+            <SignOutIcon className="text-red-500 w-5 h-5" />
             Sign out
           </button>
         </div>

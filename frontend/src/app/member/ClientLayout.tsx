@@ -27,7 +27,6 @@ export default function ClientLayout({
         if (!res.ok) return;
 
         const data = await res.json();
-              console.log("ClientLayout member:", data);
         setMember(data.member);
       } catch (err) {
         console.error("Failed to fetch member:", err);
