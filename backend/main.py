@@ -56,6 +56,44 @@ def get_trainers(user=Depends(get_current_user_any_role)):
 
     return result
 
+@app.get("/trainer/{employee_id}")
+def get_trainer_detail(
+    employee_id: int,
+    user=Depends(get_current_user_any_role)
+):
+
+    conn = get_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    query = """
+    SELECT
+        e.EmployeeID,
+        e.FirstName,
+        e.LastName,
+        t.Specialty,
+        e.StartDate,
+        e.Contract_Type
+        
+
+    FROM Trainer t
+
+    JOIN Employee e
+        ON t.EmployeeID = e.EmployeeID
+
+    WHERE e.EmployeeID = %s
+    """
+
+    cursor.execute(query, (employee_id,))
+    trainer = cursor.fetchone()
+
+    cursor.close()
+    conn.close()
+
+    if trainer is None:
+        raise HTTPException(status_code=404, detail="Trainer not found")
+
+    return trainer
+
 @app.get("/equipment")
 def get_equipment(user=Depends(get_current_user_any_role)):
 
@@ -75,6 +113,33 @@ def get_equipment(user=Depends(get_current_user_any_role)):
     conn.close()
 
     return result
+
+@app.get("/equipment/{equipment_id}")
+def get_equipment_detail(
+    equipment_id: str,
+    user=Depends(get_current_user_any_role)
+):
+
+    conn = get_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    query = """
+    SELECT
+        Equipment_ID,
+        Equipment,
+        Import_Date,
+        STATUS
+    FROM Gym_Equipment
+    WHERE Equipment_ID = %s
+    """
+
+    cursor.execute(query, (equipment_id,))
+    equipment = cursor.fetchone()
+
+    cursor.close()
+    conn.close()
+
+    return equipment
 
 @app.get("/promotions")
 def get_promotions(user=Depends(get_current_user_any_role)):
@@ -99,6 +164,40 @@ def get_promotions(user=Depends(get_current_user_any_role)):
     conn.close()
 
     return result
+
+@app.get("/promotion/{promo_code}")
+def get_promotion_detail(
+    promo_code: str,
+    user=Depends(get_current_user_any_role)
+):
+
+    conn = get_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    query = """
+    SELECT
+        p.PromoCode,
+        p.DiscountRate,
+        a.packageID,
+        p.StartDate,
+        p.EndDate
+        
+
+    FROM Promotion p
+
+    LEFT JOIN Applies_to a
+        ON p.PromoCode = a.PromoCode
+
+    WHERE p.PromoCode = %s
+    """
+
+    cursor.execute(query, (promo_code,))
+    promotion = cursor.fetchone()
+
+    cursor.close()
+    conn.close()
+
+    return promotion
 
 @app.get("/lockers")
 def get_lockers(user=Depends(get_current_user_any_role)):
@@ -128,6 +227,31 @@ def get_lockers(user=Depends(get_current_user_any_role)):
     conn.close()
 
     return result
+
+@app.get("/locker/{locker_id}")
+def get_locker_detail(
+    locker_id: str,
+    user=Depends(get_current_user_any_role)
+):
+
+    conn = get_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    query = """
+    SELECT
+        LockerID,
+        Zone
+    FROM Locker
+    WHERE LockerID = %s
+    """
+
+    cursor.execute(query, (locker_id,))
+    locker = cursor.fetchone()
+
+    cursor.close()
+    conn.close()
+
+    return locker
 
 @app.get("/classes")
 def get_classes(user=Depends(get_current_user_any_role)):
