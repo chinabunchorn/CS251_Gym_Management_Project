@@ -1450,7 +1450,7 @@ def manager_update_class(
     capacity: int,
     class_date: str,
     class_time: str,
-    employee_id: int,
+    employee_id: int = None,
     user=Depends(require_manager)
 ):
     conn = get_connection()
@@ -1468,17 +1468,18 @@ def manager_update_class(
             WHERE ClassID = %s
         """, (class_date, class_time, class_id))
 
-        cursor.execute("SELECT Schedule_ID FROM class_schedule WHERE ClassID = %s", (class_id,))
-        schedule = cursor.fetchone()
-        if schedule:
-            cursor.execute("""
-                UPDATE leads
-                SET EmployeeID = %s
-                WHERE Schedule_ID = %s
-            """, (employee_id, schedule["Schedule_ID"]))
+        if employee_id is not None:
+            cursor.execute("SELECT Schedule_ID FROM class_schedule WHERE ClassID = %s", (class_id,))
+            schedule = cursor.fetchone()
+            if schedule:
+                cursor.execute("""
+                    UPDATE leads
+                    SET EmployeeID = %s
+                    WHERE Schedule_ID = %s
+                """, (employee_id, schedule["Schedule_ID"]))
 
         conn.commit()
-        return {"message": "Class updated successfully"}
+        return {"message": "Class updated successfully", "ClassID": class_id}
     except Exception as e:
         conn.rollback()
         raise HTTPException(status_code=400, detail=str(e))
@@ -1504,7 +1505,7 @@ def manager_delete_class(class_id: str, user=Depends(require_manager)):
         cursor.execute("DELETE FROM class_catalog WHERE ClassID = %s", (class_id,))
 
         conn.commit()
-        return {"message": "Class deleted successfully"}
+        return {"message": "Class deleted successfully", "ClassID": class_id}
     except Exception as e:
         conn.rollback()
         raise HTTPException(status_code=400, detail=str(e))
@@ -1523,8 +1524,8 @@ def manager_update_member(
     medrec: str,
     weight: float,
     height: float,
-    package_id: str,
-    trainer_id: int,
+    package_id: str = None,
+    trainer_id: int = None,
     user=Depends(require_manager)
 ):
     conn = get_connection()
@@ -1536,7 +1537,6 @@ def manager_update_member(
             SET FirstName=%s, LastName=%s, PASSWORD=%s, Bdate=%s, MedRec=%s, Weight=%s, Height=%s
             WHERE Member_ID=%s
         """, (firstname, lastname, hashed_pw, bdate, medrec, weight, height, member_id))
-
         cursor.execute("""
             UPDATE Subscribes_to
             SET packageID=%s
@@ -1550,7 +1550,7 @@ def manager_update_member(
         """, (trainer_id, member_id))
 
         conn.commit()
-        return {"message": "Member updated successfully"}
+        return {"message": "Member updated successfully", "Member_ID": member_id}
     except Exception as e:
         conn.rollback()
         raise HTTPException(status_code=400, detail=str(e))
@@ -1563,14 +1563,19 @@ def manager_delete_member(member_id: int, user=Depends(require_manager)):
     conn = get_connection()
     cursor = conn.cursor()
     try:
-        cursor.execute("DELETE FROM attendance WHERE Member_ID = %s", (member_id,))
-        cursor.execute("DELETE FROM rent WHERE Member_ID = %s", (member_id,))
-        cursor.execute("DELETE FROM reserves WHERE Member_ID = %s", (member_id,))
-        cursor.execute("DELETE FROM subscribes_to WHERE Member_ID = %s", (member_id,))
-        cursor.execute("DELETE FROM trains WHERE Member_ID = %s", (member_id,))
+        cursor.execute("DELETE FROM Attendance WHERE Member_ID = %s", (member_id,))
+        
+        cursor.execute("SELECT Member_ID FROM Member WHERE Member_ID = %s", (member_id,))
+        for locker in cursor.fetchall():
+            cursor.execute("UPDATE Locker SET STATUS = 'Available' WHERE LockerID = %s", (locker["LockerID"],))
+        cursor.execute("DELETE FROM Rent WHERE Member_ID = %s", (member_id,))
+
+        cursor.execute("DELETE FROM Reserves WHERE Member_ID = %s", (member_id,))
+        cursor.execute("DELETE FROM Subscribes_to WHERE Member_ID = %s", (member_id,))
+        cursor.execute("DELETE FROM Trains WHERE Member_ID = %s", (member_id,))
         cursor.execute("DELETE FROM Member WHERE Member_ID = %s", (member_id,))
         conn.commit()
-        return {"message": "Member deleted successfully"}
+        return {"message": "Member deleted successfully", "Member_ID": member_id}
     except Exception as e:
         conn.rollback()
         raise HTTPException(status_code=400, detail=str(e))
@@ -1602,14 +1607,15 @@ def manager_update_trainer(
             WHERE EmployeeID=%s
         """, (firstname, lastname, salary, username, hashed_pw, manager_id, contract_type, employee_id))
 
-        cursor.execute("""
-            UPDATE Trainer
-            SET Specialty=%s
-            WHERE EmployeeID=%s
-        """, (specialty, employee_id))
+        if specialty is not None:
+            cursor.execute("""
+                UPDATE Trainer
+                SET Specialty=%s
+                WHERE EmployeeID=%s
+            """, (specialty, employee_id))
 
         conn.commit()
-        return {"message": "Trainer updated successfully"}
+        return {"message": "Trainer updated successfully", "EmployeeID": employee_id}
     except Exception as e:
         conn.rollback()
         raise HTTPException(status_code=400, detail=str(e))
@@ -1622,13 +1628,17 @@ def manager_delete_trainer(employee_id: int, user=Depends(require_manager)):
     conn = get_connection()
     cursor = conn.cursor()
     try:
-        cursor.execute("DELETE FROM trains WHERE EmployeeID = %s", (employee_id,))
-        cursor.execute("DELETE FROM leads WHERE EmployeeID = %s", (employee_id,))
+        cursor.execute("DELETE FROM Trains WHERE EmployeeID = %s", (employee_id,))
+        cursor.execute("DELETE FROM Leads WHERE EmployeeID = %s", (employee_id,))
         cursor.execute("DELETE FROM Trainer WHERE EmployeeID = %s", (employee_id,))
+
+        # ถ้ามีลูกน้อง ให้ set ManagerID เป็น NULL
+        cursor.execute("UPDATE Employee SET ManagerID = NULL WHERE ManagerID = %s", (employee_id,))
+
         cursor.execute("DELETE FROM Manager WHERE EmployeeID = %s", (employee_id,))
         cursor.execute("DELETE FROM Employee WHERE EmployeeID = %s", (employee_id,))
         conn.commit()
-        return {"message": "Trainer deleted successfully"}
+        return {"message": "Trainer deleted successfully", "EmployeeID": employee_id}
     except Exception as e:
         conn.rollback()
         raise HTTPException(status_code=400, detail=str(e))
@@ -1641,9 +1651,9 @@ def manager_delete_trainer(employee_id: int, user=Depends(require_manager)):
 def manager_update_promotion(
     promo_code: str,
     discount_rate: float,
-    package_id: str,
     start_date: str,
     end_date: str,
+    package_id: str = None,
     user=Depends(require_manager)
 ):
     conn = get_connection()
@@ -1655,14 +1665,14 @@ def manager_update_promotion(
             WHERE PromoCode=%s
         """, (discount_rate, start_date, end_date, promo_code))
 
-        cursor.execute("""
-            UPDATE Applies_to
-            SET packageID=%s
-            WHERE PromoCode=%s
-        """, (package_id, promo_code))
-
+        if package_id is not None:
+            cursor.execute("""
+                UPDATE Applies_to
+                SET packageID=%s
+                WHERE PromoCode=%s
+            """, (package_id, promo_code))
         conn.commit()
-        return {"message": "Promotion updated successfully"}
+        return {"message": "Promotion updated successfully", "PromoCode": promo_code}
     except Exception as e:
         conn.rollback()
         raise HTTPException(status_code=400, detail=str(e))
@@ -1675,10 +1685,10 @@ def manager_delete_promotion(promo_code: str, user=Depends(require_manager)):
     conn = get_connection()
     cursor = conn.cursor()
     try:
-        cursor.execute("DELETE FROM applies_to WHERE PromoCode = %s", (promo_code,))
+        cursor.execute("DELETE FROM Applies_to WHERE PromoCode = %s", (promo_code,))
         cursor.execute("DELETE FROM Promotion WHERE PromoCode = %s", (promo_code,))
         conn.commit()
-        return {"message": "Promotion deleted successfully"}
+        return {"message": "Promotion deleted successfully", "PromoCode": promo_code}
     except Exception as e:
         conn.rollback()
         raise HTTPException(status_code=400, detail=str(e))
@@ -1698,7 +1708,7 @@ def manager_update_locker(
     try:
         cursor.execute("UPDATE Locker SET Zone=%s WHERE LockerID=%s", (zone, locker_id))
         conn.commit()
-        return {"message": "Locker updated successfully"}
+        return {"message": "Locker updated successfully", "LockerID": locker_id}
     except Exception as e:
         conn.rollback()
         raise HTTPException(status_code=400, detail=str(e))
@@ -1711,10 +1721,10 @@ def manager_delete_locker(locker_id: str, user=Depends(require_manager)):
     conn = get_connection()
     cursor = conn.cursor()
     try:
-        cursor.execute("DELETE FROM rent WHERE LockerID = %s", (locker_id,))
+        cursor.execute("DELETE FROM Rent WHERE LockerID = %s", (locker_id,))
         cursor.execute("DELETE FROM Locker WHERE LockerID = %s", (locker_id,))
         conn.commit()
-        return {"message": "Locker deleted successfully"}
+        return {"message": "Locker deleted successfully", "LockerID": locker_id}
     except Exception as e:
         conn.rollback()
         raise HTTPException(status_code=400, detail=str(e))
@@ -1727,6 +1737,7 @@ def manager_delete_locker(locker_id: str, user=Depends(require_manager)):
 def manager_update_equipment(
     equipment_id: str,
     equipment_name: str,
+    status: str,
     import_date: str,
     user=Depends(require_manager)
 ):
@@ -1735,11 +1746,11 @@ def manager_update_equipment(
     try:
         cursor.execute("""
             UPDATE Gym_Equipment
-            SET Equipment=%s, Import_Date=%s
+            SET Equipment=%s, Status=%s, Import_Date=%s
             WHERE Equipment_ID=%s
-        """, (equipment_name, import_date, equipment_id))
+        """, (equipment_name, status, import_date, equipment_id))
         conn.commit()
-        return {"message": "Equipment updated successfully"}
+        return {"message": "Equipment updated successfully", "Equipment_ID": equipment_id}
     except Exception as e:
         conn.rollback()
         raise HTTPException(status_code=400, detail=str(e))
@@ -1752,10 +1763,10 @@ def manager_delete_equipment(equipment_id: str, user=Depends(require_manager)):
     conn = get_connection()
     cursor = conn.cursor()
     try:
-        cursor.execute("DELETE FROM requires WHERE Equipment_ID = %s", (equipment_id,))
+        cursor.execute("DELETE FROM Requires WHERE Equipment_ID = %s", (equipment_id,))
         cursor.execute("DELETE FROM Gym_Equipment WHERE Equipment_ID = %s", (equipment_id,))
         conn.commit()
-        return {"message": "Equipment deleted successfully"}
+        return {"message": "Equipment deleted successfully", "Equipment_ID": equipment_id}
     except Exception as e:
         conn.rollback()
         raise HTTPException(status_code=400, detail=str(e))
