@@ -21,6 +21,29 @@ export default function Manager_members() {
         fetchMembers();
     }, []);
 
+
+    const fetchMemberDetail = async (id: number) => {
+        const token = localStorage.getItem("token");
+
+        try {
+            setSelectedMember(null);
+            setForm(null);
+
+            const res = await fetch(`http://127.0.0.1:8000/profile/${id}`, {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            });
+
+            const data = await res.json();
+
+            setSelectedMember(data);
+
+        } catch (err) {
+            console.error(err);
+        }
+    };
+
     const fetchMembers = async () => {
         const token = localStorage.getItem("token");
 
@@ -35,7 +58,7 @@ export default function Manager_members() {
             setMembers(data);
 
             if (data.length > 0) {
-                setSelectedMember(data[0]);
+                fetchMemberDetail(data[0].Member_ID);
             }
         } catch (err) {
             console.error(err);
@@ -54,7 +77,7 @@ export default function Manager_members() {
                 medrec: selectedMember.MedRec || "",
                 weight: selectedMember.Weight || "",
                 height: selectedMember.Height || "",
-                package_id: selectedMember.PackageID || "",
+                package_id: selectedMember.packageID || "",
                 trainer_id: selectedMember.TrainerID || "",
             });
         }
@@ -111,42 +134,42 @@ export default function Manager_members() {
 
                 <div className="flex h-full w-full">
 
-                    <div className="flex-col w-[70%] h-[full] border-green-500 border-4">
+                    <div className="flex-col w-[70%] h-[full]">
 
-                        <div className="flex h-[10%] w-[100%] justify-between items-center bg-[#ffffff] border-b-2 border-[#939393]">
+                        <div className="flex h-[15%] w-[100%] justify-between items-center bg-[#ffffff] border-b-2 border-[#939393]">
                             <div className="ml-8 font-bold text-[#202022] text-3xl">Members</div>
                         </div>
 
-                        <div className="h-[90%] p-8 border-red-500 border-4 flex flex-col gap-4">
+                        <div className="h-[85%] p-8 flex flex-col gap-4">
                             {members.map((member) => (
                                 <MemberCard
                                     key={member.Member_ID}
                                     member={member}
                                     selected={selectedMember?.Member_ID === member.Member_ID}
-                                    onClick={() => setSelectedMember(member)}
+                                    onClick={() => fetchMemberDetail(member.Member_ID)}
                                 />
                             ))}
                         </div>
 
                     </div>
 
-                    <div className="flex-col w-[30%] h-[full] border-orange-500 border-4">
-                        <div className="flex w-[full] h-[10%] items-center border-4 border-yellow-500">
+                    <div className="flex-col w-[30%] h-[full] bg-[#ffffff] border-l-1 border-gray-500">
+                        <div className="flex w-[full] h-[10%] items-center">
                             <h1 className="text-[#202022] font-bold pl-8 text-3xl">Member Details</h1>
                         </div>
-                        <div className="w-[full] h-[90%] border-4 border-red-500">
-                            <DetailSidebar
-                                onCancel={handleCancel}
-                                onSave={handleSave}
-                                saving={saving}
-                            >
-                                {selectedMember && form ? (
+                        {selectedMember && form ? (
+                            <div className="w-full h-[90%]">
+                                <DetailSidebar
+                                    onCancel={handleCancel}
+                                    onSave={handleSave}
+                                    saving={saving}
+                                >
                                     <>
                                         <FormField label="Member ID">
                                             <input
                                                 value={form.member_id}
                                                 disabled
-                                                className="w-full px-3 py-2 rounded-lg bg-transparent outline-none text-[#202022] border-1 border-[#000000]"
+                                                className="w-full px-3 py-2 rounded-lg bg-transparent outline-none text-gray-400 border border-black"
                                             />
                                         </FormField>
 
@@ -154,7 +177,7 @@ export default function Manager_members() {
                                             <input
                                                 value={form.firstname}
                                                 onChange={(e) => handleChange("firstname", e.target.value)}
-                                                className="w-full px-3 py-2 rounded-lg bg-transparent outline-none text-[#202022] border-1 border-[#000000]"
+                                                className="w-full px-3 py-2 rounded-lg bg-transparent outline-none text-[#202022] border border-black"
                                             />
                                         </FormField>
 
@@ -162,7 +185,7 @@ export default function Manager_members() {
                                             <input
                                                 value={form.lastname}
                                                 onChange={(e) => handleChange("lastname", e.target.value)}
-                                                className="w-full px-3 py-2 rounded-lg bg-transparent outline-none text-[#202022] border-1 border-[#000000]"
+                                                className="w-full px-3 py-2 rounded-lg bg-transparent outline-none text-[#202022] border border-black"
                                             />
                                         </FormField>
 
@@ -171,7 +194,7 @@ export default function Manager_members() {
                                                 type="date"
                                                 value={form.bdate}
                                                 onChange={(e) => handleChange("bdate", e.target.value)}
-                                                className="w-full px-3 py-2 rounded-lg bg-transparent outline-none text-[#202022] border-1 border-[#000000]"
+                                                className="w-full px-3 py-2 rounded-lg bg-transparent outline-none text-[#202022] border border-black"
                                             />
                                         </FormField>
 
@@ -179,33 +202,37 @@ export default function Manager_members() {
                                             <input
                                                 value={form.medrec}
                                                 onChange={(e) => handleChange("medrec", e.target.value)}
-                                                className="w-full px-3 py-2 rounded-lg bg-transparent outline-none text-[#202022] border-1 border-[#000000]"
+                                                className="w-full px-3 py-2 rounded-lg bg-transparent outline-none text-[#202022] border border-black"
                                             />
                                         </FormField>
 
                                         <div className="flex gap-4">
-                                            <FormField label="Height">
-                                                <input
-                                                    value={form.height}
-                                                    onChange={(e) => handleChange("height", e.target.value)}
-                                                    className="w-full px-3 py-2 rounded-lg bg-transparent outline-none text-[#202022] border-1 border-[#000000]"
-                                                />
-                                            </FormField>
+                                            <div className="flex-1">
+                                                <FormField label="Height">
+                                                    <input
+                                                        value={form.height}
+                                                        onChange={(e) => handleChange("height", e.target.value)}
+                                                        className="w-full px-3 py-2 rounded-lg bg-transparent outline-none text-[#202022] border border-black"
+                                                    />
+                                                </FormField>
+                                            </div>
 
-                                            <FormField label="Weight">
-                                                <input
-                                                    value={form.weight}
-                                                    onChange={(e) => handleChange("weight", e.target.value)}
-                                                    className="w-full px-3 py-2 rounded-lg bg-transparent outline-none text-[#202022] border-1 border-[#000000]"
-                                                />
-                                            </FormField>
+                                            <div className="flex-1">
+                                                <FormField label="Weight">
+                                                    <input
+                                                        value={form.weight}
+                                                        onChange={(e) => handleChange("weight", e.target.value)}
+                                                        className="w-full px-3 py-2 rounded-lg bg-transparent outline-none text-[#202022] border border-black"
+                                                    />
+                                                </FormField>
+                                            </div>
                                         </div>
 
                                         <FormField label="Package">
                                             <input
                                                 value={form.package_id}
                                                 onChange={(e) => handleChange("package_id", e.target.value)}
-                                                className="w-full px-3 py-2 rounded-lg bg-transparent outline-none text-[#202022] border-1 border-[#000000]"
+                                                className="w-full px-3 py-2 rounded-lg bg-transparent outline-none text-[#202022] border border-black"
                                             />
                                         </FormField>
 
@@ -213,15 +240,17 @@ export default function Manager_members() {
                                             <input
                                                 value={form.trainer_id}
                                                 onChange={(e) => handleChange("trainer_id", e.target.value)}
-                                                className="w-full px-3 py-2 rounded-lg bg-transparent outline-none text-[#202022] border-1 border-[#000000]"
+                                                className="w-full px-3 py-2 rounded-lg bg-transparent outline-none text-[#202022] border border-black"
                                             />
                                         </FormField>
                                     </>
-                                ) : (
-                                    <p className="text-gray-500">No member selected</p>
-                                )}
-                            </DetailSidebar>
-                        </div>
+                                </DetailSidebar>
+                            </div>
+                        ) : (
+                            <div className="w-full h-[90%] flex items-center justify-center text-gray-400">
+                                No member selected
+                            </div>
+                        )}
                     </div>
 
                 </div>
