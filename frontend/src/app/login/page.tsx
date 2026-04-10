@@ -72,10 +72,10 @@ export default function LoginPage() {
           </p>
 
           {/* Username */}
-          <label className="block text-sm mb-1 text-[#202022]">Email</label>
+          <label className="block text-sm mb-1 text-[#202022]">Username</label>
           <input
             type="email"
-            placeholder="Example@email.com"
+            placeholder="Please enter your username"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             className="w-full p-3 mb-8 rounded-lg border border-[#D4D7E3] bg-[#F7FBFF] outline-none text-[#8897AD]"
@@ -85,7 +85,7 @@ export default function LoginPage() {
           <label className="block text-sm mb-1 text-[#202022]">Password</label>
           <input
             type="password"
-            placeholder="At least 8 characters"
+            placeholder="Please enter your password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             className="w-full p-3 mb-2 rounded-lg border border-[#D4D7E3] bg-[#F7FBFF] outline-none text-[#8897AD]"
