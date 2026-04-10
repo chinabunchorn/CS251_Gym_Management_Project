@@ -23,11 +23,11 @@ export default function MobileNavbar({ open, setOpen }: DrawerProps) {
     },
     {
       name: "Trainers",
-      path: "/member/trainers",
+      path: "/member/trainer",
     },
     {
       name: "Lockers",
-      path: "/member/lockers",
+      path: "/member/locker",
     },
     {
       name: "Equipment",
@@ -39,7 +39,7 @@ export default function MobileNavbar({ open, setOpen }: DrawerProps) {
     },
     {
       name: "My Bookings",
-      path: "/member/bookings",
+      path: "/member/booking",
     },
   ];
 

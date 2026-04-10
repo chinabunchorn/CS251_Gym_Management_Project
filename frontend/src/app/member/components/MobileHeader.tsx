@@ -14,10 +14,11 @@ export default function MobileHeader({ onMenuClick }: HeaderProps) {
     const titles: Record<string, string> = {
     "/member" : "Home",
     "/member/classes" : "Classes",
-    "/member/trainers" : "Trainers",
-    "/member/bookings" :"My Bookings",
+    "/member/trainer" : "Trainers",
+    "/member/booking" :"My Bookings",
     "/member/promotions" : "Promotions",
-    "/member/Lockers": "Lockers"
+    "/member/locker": "Locker",
+    "/member/equipment" : "Equipment"
   }
 
   const title = titles[pathName] || "App";
