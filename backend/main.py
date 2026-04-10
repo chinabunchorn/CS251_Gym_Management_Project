@@ -1728,6 +1728,7 @@ def manager_update_equipment(
     equipment_id: str,
     equipment_name: str,
     import_date: str,
+    status: str,
     user=Depends(require_manager)
 ):
     conn = get_connection()
@@ -1735,14 +1736,19 @@ def manager_update_equipment(
     try:
         cursor.execute("""
             UPDATE Gym_Equipment
-            SET Equipment=%s, Import_Date=%s
+            SET Equipment=%s,
+                Import_Date=%s,
+                Status=%s
             WHERE Equipment_ID=%s
-        """, (equipment_name, import_date, equipment_id))
+        """, (equipment_name, import_date, status, equipment_id))
+
         conn.commit()
         return {"message": "Equipment updated successfully"}
+
     except Exception as e:
         conn.rollback()
         raise HTTPException(status_code=400, detail=str(e))
+
     finally:
         cursor.close()
         conn.close()
