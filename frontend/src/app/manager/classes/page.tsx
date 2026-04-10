@@ -9,6 +9,9 @@ import AddButton from "../../components/AddButton";
 import { useEffect, useState } from "react";
 
 interface GymClass {
+    Schedule_ID: number;  
+    EmployeeID: number;   
+    Description: string;  
     ClassName: string;
     InstructorName: string;
     ClassDate: string;
@@ -17,7 +20,6 @@ interface GymClass {
     ReservedCount: number;
 }
 
-// เพิ่ม Interface สำหรับ Trainer
 interface Trainer {
     EmployeeID: number;
     FirstName: string;
@@ -26,25 +28,25 @@ interface Trainer {
 }
 
 export default function Trainer_classes() {
-    // 🔴 1. กฎเหล็กของ React: useState ทุกตัวต้องอยู่บนสุด! ห้ามมี return คั่นก่อนหน้า!
     const [classes, setClasses] = useState<GymClass[]>([]);
-    const [trainers, setTrainers] = useState<Trainer[]>([]); // ย้ายขึ้นมาตรงนี้
+    const [trainers, setTrainers] = useState<Trainer[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedDate, setSelectedDate] = useState(new Date());
+    
+    // State สำหรับควบคุม Modal และ โหมด Edit
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [editingScheduleId, setEditingScheduleId] = useState<number | null>(null);
 
     const [formData, setFormData] = useState({
         className: "",
-        instructor: "", // ค่านี้จะเก็บ EmployeeID ของ Trainer
+        instructor: "", 
         capacity: "",
         description: "",
         date: "",
         time: ""
     });
 
-    // 🔴 2. useEffect ก็ต้องอยู่ก่อน return เช่นกัน
     useEffect(() => {
-        // ดึงทั้ง Class และ Trainer มารอไว้เลยตอนเข้าหน้าเว็บ
         fetchClasses();
         fetchTrainers();
     }, []);
@@ -66,7 +68,6 @@ export default function Trainer_classes() {
         } catch (error) {
             console.error("Error fetching classes:", error);
         } finally {
-            // เมื่อดึงข้อมูลเสร็จ ค่อยปิด loading
             setLoading(false); 
         }
     };
@@ -86,17 +87,84 @@ export default function Trainer_classes() {
         }
     };
 
+    // ฟังก์ชันเปิด Modal สำหรับ "สร้างใหม่"
+    const handleAddClassClick = () => {
+        setEditingScheduleId(null); // เคลียร์ State Edit
+        setFormData({ className: "", instructor: "", capacity: "", description: "", date: "", time: "" });
+        setIsModalOpen(true);
+    };
+
+    // ฟังก์ชันเปิด Modal สำหรับ "แก้ไข"
+    const handleEditClick = (gymClass: GymClass) => {
+        setEditingScheduleId(gymClass.Schedule_ID); // จำว่ากำลังแก้ Schedule ไหน
+        setFormData({
+            className: gymClass.ClassName,
+            instructor: gymClass.EmployeeID.toString(),
+            capacity: gymClass.Capacity.toString(),
+            description: gymClass.Description || "-",
+            date: gymClass.ClassDate,
+            time: secondsToInputTime(gymClass.ClassTime) // แปลงเวลากลับไปใส่ Input
+        });
+        setIsModalOpen(true);
+    };
+
+    const handleDeleteClick = async (scheduleId: number) => {
+        // ใช้ Confirm Dialog ดักไว้ก่อน เผื่อกดพลาด
+        const isConfirmed = window.confirm("Are you sure you want to delete this schedule? This action cannot be undone.");
+        
+        if (!isConfirmed) return;
+
+        try {
+            const token = localStorage.getItem("token");
+            const response = await fetch(`http://127.0.0.1:8000/manager/schedule/delete/${scheduleId}`, {
+                method: "DELETE",
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.detail || "Failed to delete schedule");
+            }
+
+            alert("Schedule deleted successfully!");
+            setLoading(true);
+            fetchClasses(); // ดึงข้อมูลใหม่เพื่อรีเฟรชหน้าจอ
+
+        } catch (error) {
+            console.error("Error deleting schedule:", error);
+            alert(`Error: ${error instanceof Error ? error.message : "Something went wrong"}`);
+        }
+    };
+
+    const handleCloseModal = () => {
+        setIsModalOpen(false);
+        setEditingScheduleId(null);
+        setFormData({ className: "", instructor: "", capacity: "", description: "", date: "", time: "" });
+    };
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+        const { name, value } = e.target;
+        setFormData(prev => ({ ...prev, [name]: value }));
+    };
+
     const handleSubmit = async () => {
         try {
-            // เช็ก Validation
             if (!formData.className || !formData.date || !formData.time || !formData.capacity || !formData.instructor) {
                 alert("Please fill in all required fields");
                 return;
             }
 
             const token = localStorage.getItem("token");
+            
+            // เช็กโหมดว่ากำลัง Add หรือ Edit
+            const isEditing = editingScheduleId !== null;
+            const endpoint = isEditing ? "http://127.0.0.1:8000/manager/class/update" : "http://127.0.0.1:8000/class/create-full";
+            const method = isEditing ? "PUT" : "POST";
 
             const queryParams = new URLSearchParams({
+                ...(isEditing && { schedule_id: editingScheduleId.toString() }), // ส่ง Schedule_ID ไปด้วยเฉพาะตอนแก้
                 class_name: formData.className,
                 description: formData.description || "-", 
                 capacity: formData.capacity.toString(),
@@ -105,8 +173,8 @@ export default function Trainer_classes() {
                 employee_id: formData.instructor
             });
 
-            const response = await fetch(`http://127.0.0.1:8000/class/create-full?${queryParams.toString()}`, {
-                method: "POST",
+            const response = await fetch(`${endpoint}?${queryParams.toString()}`, {
+                method: method,
                 headers: {
                     "Accept": "application/json",
                     Authorization: `Bearer ${token}`,
@@ -115,20 +183,21 @@ export default function Trainer_classes() {
 
             if (!response.ok) {
                 const errorData = await response.json();
-                throw new Error(errorData.detail || "Failed to create class");
+                throw new Error(errorData.detail || "Failed to process class");
             }
 
-            alert("Class created successfully!");
+            alert(`Class ${isEditing ? "updated" : "created"} successfully!`);
             handleCloseModal();
-            setLoading(true); // เปิด loading อีกรอบตอนดึงข้อมูลใหม่
-            fetchClasses(); // ดึงข้อมูลอัปเดต
+            setLoading(true); 
+            fetchClasses(); 
 
         } catch (error) {
-            console.error("Error creating class:", error);
+            console.error("Error processing class:", error);
             alert(`Error: ${error instanceof Error ? error.message : "Something went wrong"}`);
         }
     };
 
+    // ตัวแปลงเวลาสำหรับแสดงผล (HH:MM AM/PM)
     function secondsToTime(seconds: string | number): string {
         const totalSeconds = Number(seconds);
         let hours = Math.floor(totalSeconds / 3600);
@@ -139,7 +208,14 @@ export default function Trainer_classes() {
         return `${hours}:${minutes.toString().padStart(2, "0")} ${period}`;
     }
 
-    // 🔴 3. Early Return ต้องอยู่ *ล่างสุด* ของบรรดา Hook ทั้งหมด
+    // ตัวแปลงเวลาสำหรับ Input Type="time" (HH:mm 24H)
+    function secondsToInputTime(seconds: string | number): string {
+        const totalSeconds = Number(seconds);
+        const hours = Math.floor(totalSeconds / 3600);
+        const minutes = Math.floor((totalSeconds % 3600) / 60);
+        return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`;
+    }
+
     if (loading) {
         return <div className="h-screen flex justify-center items-center font-bold text-2xl">Loading...</div>;
     }
@@ -167,17 +243,7 @@ export default function Trainer_classes() {
 
     const cardColors = ["#FFEDD1", "#BFDBFE", "#E7F3FF", "#FED9EC", "#A7F3D0", "#DDD6FE", "#FED7AA"];
 
-    const handleAddClassClick = () => setIsModalOpen(true);
-
-    const handleCloseModal = () => {
-        setIsModalOpen(false);
-        setFormData({ className: "", instructor: "", capacity: "", description: "", date: "", time: "" });
-    };
-
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-        const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
-    };
+    const isEditingMode = editingScheduleId !== null;
 
     return (
         <AuthGuard>
@@ -226,9 +292,24 @@ export default function Trainer_classes() {
                                             <p className="text-[#736A6A] mb-2">Instructor: {gymClass.InstructorName}</p>
                                             <p className="text-[#736A6A] mb-2">Capacity : {gymClass.ReservedCount}/{gymClass.Capacity}</p>
                                         </div>
-                                        <div className="flex w-[20%] justify-center items-center">
-                                            <button className="flex w-[70%] h-[40%] bg-[#5F33E1] justify-center items-center rounded-2xl text-[#ffffff] font-bold text-lg hover:bg-[#4d28b8] transition-colors cursor-pointer">
-                                                View Details
+                                        <div className="flex w-[20%] justify-center items-center gap-3">
+                                            {/* ปุ่ม Edit */}
+                                            <button 
+                                                onClick={() => handleEditClick(gymClass)}
+                                                className="flex w-[60%] h-[40%] bg-[#5F33E1] justify-center items-center rounded-2xl text-[#ffffff] font-bold text-lg hover:bg-[#4d28b8] transition-colors cursor-pointer"
+                                            >
+                                                Edit
+                                            </button>
+                                            
+                                            {/* ปุ่ม Delete*/}
+                                            <button 
+                                                onClick={() => handleDeleteClick(gymClass.Schedule_ID)}
+                                                className="flex w-[40px] h-[40px] bg-[#FFE0E0] justify-center items-center rounded-xl text-[#FF3B3B] hover:bg-[#FF3B3B] hover:text-white transition-colors cursor-pointer"
+                                                title="Delete Schedule"
+                                            >
+                                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                                                </svg>
                                             </button>
                                         </div>
                                     </div>
@@ -238,13 +319,14 @@ export default function Trainer_classes() {
                     </div>
                 </div>
 
-                {/* --- Modal Add New Class --- */}
                 {isModalOpen && (
                     <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex justify-center items-center z-50 transition-opacity duration-300 ease-in-out">
                         <div className="bg-white rounded-3xl p-8 w-[800px] shadow-2xl relative flex flex-col gap-6">
                             
                             <div className="flex justify-between items-center border-b pb-4">
-                                <h2 className="text-3xl font-bold text-[#202022]">Add New Class</h2>
+                                <h2 className="text-3xl font-bold text-[#202022]">
+                                    {isEditingMode ? "Edit Class Schedule" : "Add New Class"}
+                                </h2>
                                 <button onClick={handleCloseModal} className="text-gray-500 hover:text-black text-2xl font-bold transition-colors cursor-pointer">
                                     &#x2715;
                                 </button>
@@ -254,12 +336,25 @@ export default function Trainer_classes() {
                                 <div className="flex flex-col gap-6">
                                     <div className="flex flex-col gap-2">
                                         <label className="font-bold text-lg text-[#202022]">Class Name</label>
-                                        <input type="text" name="className" value={formData.className} onChange={handleChange} placeholder="Enter class name" className="border border-[#a584ff] rounded-lg p-3 outline-none focus:ring-2 focus:ring-[#5F33E1] text-sm text-[#8c8c8c]"/>
+                                        <input 
+                                            type="text" 
+                                            name="className" 
+                                            value={formData.className} 
+                                            onChange={handleChange} 
+                                            placeholder="Enter class name" 
+                                            disabled={isEditingMode}
+                                            className={`border rounded-lg p-3 outline-none focus:ring-2 focus:ring-[#5F33E1] text-sm ${isEditingMode ? 'bg-gray-100 text-gray-400 cursor-not-allowed border-gray-200' : 'border-[#a584ff] text-[#8c8c8c]'}`}
+                                        />
                                     </div>
                                     
                                     <div className="flex flex-col gap-2">
                                         <label className="font-bold text-lg text-[#202022]">Instructor</label>
-                                        <select name="instructor" value={formData.instructor} onChange={handleChange} className="border border-[#a584ff] rounded-lg p-3 outline-none focus:ring-2 focus:ring-[#5F33E1] text-sm text-[#8c8c8c] appearance-none bg-white">
+                                        <select 
+                                            name="instructor" 
+                                            value={formData.instructor} 
+                                            onChange={handleChange} 
+                                            className="border border-[#a584ff] rounded-lg p-3 outline-none focus:ring-2 focus:ring-[#5F33E1] text-sm text-[#8c8c8c] appearance-none bg-white"
+                                        >
                                             <option value="" disabled>Select an instructor</option>
                                             {trainers.map((t) => (
                                                 <option key={t.EmployeeID} value={t.EmployeeID}>
@@ -271,7 +366,13 @@ export default function Trainer_classes() {
 
                                     <div className="flex flex-col gap-2">
                                         <label className="font-bold text-lg text-[#202022]">Capacity</label>
-                                        <select name="capacity" value={formData.capacity} onChange={handleChange} className="border border-[#a584ff] rounded-lg p-3 outline-none focus:ring-2 focus:ring-[#5F33E1] text-sm text-[#8c8c8c] appearance-none bg-white">
+                                        <select 
+                                            name="capacity" 
+                                            value={formData.capacity} 
+                                            onChange={handleChange} 
+                                            disabled={isEditingMode}
+                                            className={`border rounded-lg p-3 outline-none focus:ring-2 focus:ring-[#5F33E1] text-sm appearance-none ${isEditingMode ? 'bg-gray-100 text-gray-400 cursor-not-allowed border-gray-200' : 'bg-white border-[#a584ff] text-[#8c8c8c]'}`}
+                                        >
                                             <option value="" disabled>Class capacity</option>
                                             <option value="10">10</option>
                                             <option value="20">20</option>
@@ -282,7 +383,14 @@ export default function Trainer_classes() {
 
                                 <div className="flex flex-col gap-2 h-full">
                                     <label className="font-bold text-lg text-[#202022]">Class Description</label>
-                                    <textarea name="description" value={formData.description} onChange={handleChange} placeholder="Enter class description" className="border border-[#a584ff] rounded-lg p-3 outline-none focus:ring-2 focus:ring-[#5F33E1] h-full resize-none text-sm text-[#8c8c8c]"></textarea>
+                                    <textarea 
+                                        name="description" 
+                                        value={formData.description} 
+                                        onChange={handleChange} 
+                                        placeholder="Enter class description" 
+                                        disabled={isEditingMode}
+                                        className={`border rounded-lg p-3 outline-none focus:ring-2 focus:ring-[#5F33E1] h-full resize-none text-sm ${isEditingMode ? 'bg-gray-100 text-gray-400 cursor-not-allowed border-gray-200' : 'border-[#a584ff] text-[#8c8c8c]'}`}
+                                    ></textarea>
                                 </div>
                             </div>
 
@@ -290,10 +398,22 @@ export default function Trainer_classes() {
                                 <label className="font-bold text-lg text-[#202022]">Date and Time</label>
                                 <div className="flex gap-4">
                                     <div className="w-1/2 relative">
-                                        <input type="date" name="date" value={formData.date} onChange={handleChange} className="w-full border border-[#a584ff] rounded-lg p-3 outline-none focus:ring-2 focus:ring-[#5F33E1] text-sm text-[#8c8c8c]"/>
+                                        <input 
+                                            type="date" 
+                                            name="date" 
+                                            value={formData.date} 
+                                            onChange={handleChange} 
+                                            className="w-full border border-[#a584ff] rounded-lg p-3 outline-none focus:ring-2 focus:ring-[#5F33E1] text-sm text-[#8c8c8c]"
+                                        />
                                     </div>
                                     <div className="w-1/2 relative">
-                                        <input type="time" name="time" value={formData.time} onChange={handleChange} className="w-full border border-[#a584ff] rounded-lg p-3 outline-none focus:ring-2 focus:ring-[#5F33E1] text-sm text-[#8c8c8c]"/>
+                                        <input 
+                                            type="time" 
+                                            name="time" 
+                                            value={formData.time} 
+                                            onChange={handleChange} 
+                                            className="w-full border border-[#a584ff] rounded-lg p-3 outline-none focus:ring-2 focus:ring-[#5F33E1] text-sm text-[#8c8c8c]"
+                                        />
                                     </div>
                                 </div>
                             </div>
@@ -303,7 +423,7 @@ export default function Trainer_classes() {
                                     Cancel
                                 </button>
                                 <button onClick={handleSubmit} className="bg-[#5F33E1] text-white font-semibold rounded-xl px-12 py-2.5 hover:bg-[#4d28b8] transition-colors cursor-pointer">
-                                    Add
+                                    {isEditingMode ? "Save" : "Add"}
                                 </button>
                             </div>
                         </div>

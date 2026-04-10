@@ -223,12 +223,14 @@ def get_classes(user=Depends(get_current_user_any_role)):
 
     query = """
     SELECT
+        cs.Schedule_ID,          
+        e.EmployeeID,            
+        cc.Description,         
         cc.ClassName,
         CONCAT(e.FirstName, ' ', e.LastName) AS InstructorName,
         cs.ClassDate,
         cs.ClassTime,
         cc.Capacity,
-
         (
             SELECT COUNT(*)
             FROM Reserves r
@@ -246,13 +248,15 @@ def get_classes(user=Depends(get_current_user_any_role)):
     ORDER BY cs.ClassDate, cs.ClassTime
     """
 
-    cursor.execute(query)
-    classes = cursor.fetchall()
-
-    cursor.close()
-    conn.close()
-
-    return classes
+    try:
+        cursor.execute(query)
+        classes = cursor.fetchall()
+        return classes
+    except Exception as e:
+        return {"error": str(e)}
+    finally:
+        cursor.close()
+        conn.close()
 
 @app.get("/profile/{member_id}")
 def get_idiv_member(member_id: int, user=Depends(get_current_user_any_role)):
@@ -1523,9 +1527,9 @@ def update_trainer_member_status(
 @app.put("/manager/class/update")
 def update_full_class(
     schedule_id: int,
-    class_name: str,
-    description: str,
-    capacity: int,
+    class_name: str,       
+    description: str,     
+    capacity: int,         
     class_date: str,
     class_time: str,
     employee_id: int,
@@ -1537,31 +1541,13 @@ def update_full_class(
 
     try:
         cursor.execute("""
-            SELECT ClassID
+            SELECT Schedule_ID
             FROM class_schedule
             WHERE Schedule_ID = %s
         """, (schedule_id,))
 
-        result = cursor.fetchone()
-
-        if result is None:
+        if cursor.fetchone() is None:
             return {"message": "Schedule not found"}
-
-        class_id = result["ClassID"]
-
-        cursor.execute("""
-            UPDATE class_catalog
-            SET ClassName = %s,
-                Description = %s,
-                Capacity = %s
-            WHERE ClassID = %s
-        """, (
-            class_name,
-            description,
-            capacity,
-            class_id
-        ))
-
 
         cursor.execute("""
             UPDATE class_schedule
@@ -1574,7 +1560,6 @@ def update_full_class(
             schedule_id
         ))
 
-
         cursor.execute("""
             UPDATE leads
             SET EmployeeID = %s
@@ -1584,11 +1569,9 @@ def update_full_class(
             schedule_id
         ))
 
-
         conn.commit()
 
-        return {"message": "Class updated successfully"}
-
+        return {"message": "Schedule updated successfully"}
 
     except Exception as e:
         conn.rollback()
@@ -1617,6 +1600,26 @@ def manager_delete_class(class_id: str, user=Depends(require_manager)):
 
         conn.commit()
         return {"message": "Class deleted successfully"}
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=400, detail=str(e))
+    finally:
+        cursor.close()
+        conn.close()
+
+@app.delete("/manager/schedule/delete/{schedule_id}")
+def manager_delete_schedule(schedule_id: int, user=Depends(require_manager)):
+    conn = get_connection()
+    cursor = conn.cursor(dictionary=True)
+    try:
+        cursor.execute("DELETE FROM reserves WHERE Schedule_ID = %s", (schedule_id,))
+        
+        cursor.execute("DELETE FROM leads WHERE Schedule_ID = %s", (schedule_id,))
+        
+        cursor.execute("DELETE FROM class_schedule WHERE Schedule_ID = %s", (schedule_id,))
+
+        conn.commit()
+        return {"message": "Schedule deleted successfully"}
     except Exception as e:
         conn.rollback()
         raise HTTPException(status_code=400, detail=str(e))
