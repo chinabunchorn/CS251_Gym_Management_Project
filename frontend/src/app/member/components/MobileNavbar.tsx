@@ -10,11 +10,13 @@ type DrawerProps = {
   setOpen: (value: boolean) => void;
 };
 
-export default function MobileNavbar({ open, setOpen }: DrawerProps) {
+type Props = DrawerProps & {
+  member: Member | null;
+};
+
+export default function MobileNavbar({ open, setOpen, member }: Props) {
   const pathName = usePathname();
   const router = useRouter();
-
-  const [member, setMember] = useState<Member | null>(null);
 
   // Link to other pages here
   const menuItems = [
@@ -47,28 +49,6 @@ export default function MobileNavbar({ open, setOpen }: DrawerProps) {
       path: "/member/booking",
     },
   ];
-  useEffect(() => {
-    const fetchMember = async () => {
-      try {
-        const token = localStorage.getItem("token");
-
-        const res = await fetch("http://localhost:8000/member/dashboard", {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-
-        if (!res.ok) return;
-
-        const data = await res.json();
-        setMember(data);
-      } catch (err) {
-        console.error("Failed to fetch member:", err);
-      }
-    };
-
-    fetchMember();
-  }, []);
 
   const handleLogout = async () => {
     try {
