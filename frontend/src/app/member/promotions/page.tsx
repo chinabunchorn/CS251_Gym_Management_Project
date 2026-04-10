@@ -48,12 +48,12 @@ export default function PromotionsPage() {
       <div className="min-h-screen bg-white p-4">
         
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
+        {/* <div className="flex items-center justify-between mb-6">
           <h1 className="text-xl font-bold text-black">
             Promotions
           </h1>
 
-        </div>
+        </div> */}
 
         {/* Title */}
         <h2 className="text-center text-black font-semibold mb-2">
