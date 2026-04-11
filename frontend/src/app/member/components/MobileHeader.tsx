@@ -35,7 +35,7 @@ export default function MobileHeader({ onMenuClick }: HeaderProps) {
         <button
             onClick={onMenuClick}
             aria-label="Open menu"
-            className="text-3xl font-light text-gray-800"
+            className="text-3xl font-light text-gray-800 cursor-pointer"
         >
             ≡
         </button>

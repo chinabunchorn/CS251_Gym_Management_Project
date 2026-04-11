@@ -1,9 +1,9 @@
 "uses client";
 import { useRouter } from "next/navigation";
-import ClassesIcon from "./icons/ClassesIcon";
-import CalendarIcon from "./icons/CalendarIcon";
-import LockerIcon from "./icons/LockerIcon";
-import StarIcon from "./icons/StarIcon";
+import ClassesIcon from "../icons/ClassesIcon";
+import CalendarIcon from "../icons/CalendarIcon";
+import LockerIcon from "../icons/LockerIcon";
+import StarIcon from "../icons/StarIcon";
 
 export default function Actions() {
     const router = useRouter();
@@ -43,7 +43,7 @@ export default function Actions() {
           <button
             key={item.name}
             onClick={() => router.push(item.path)}
-            className="flex items-center gap-3 bg-white p-4 rounded-2xl shadow-sm active:scale-95 transition"
+            className="flex items-center gap-3 bg-white p-4 rounded-2xl shadow-sm active:scale-95 transition cursor-pointer border-[#736A6A] border"
           >
             {/* Icon container */}
             <div className={`p-2 rounded-xl ${item.color}`}>
@@ -51,7 +51,7 @@ export default function Actions() {
             </div>
 
             {/* Label */}
-            <span className="text-sm font-medium text-gray-800">
+            <span className="text-sm font-bold text-gray-800">
               {item.name}
             </span>
           </button>
