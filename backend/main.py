@@ -61,7 +61,7 @@ def get_all_packages(user=Depends(get_current_user_any_role)):
     conn = get_connection()
     cursor = conn.cursor(dictionary=True)
     try:
-        cursor.execute("SELECT packageID, packName FROM package")
+        cursor.execute("SELECT packageID, packName, PackPrice FROM package")
         return cursor.fetchall()
     except Exception as e:
         return {"error": str(e)}
@@ -118,27 +118,31 @@ def get_equipment_detail(
 
 @app.get("/promotions")
 def get_promotions(user=Depends(get_current_user_any_role)):
-
     conn = get_connection()
     cursor = conn.cursor(dictionary=True)
 
     query = """
     SELECT
-        PromoCode,
-        DiscountRate,
-        StartDate,
-        EndDate
-    FROM Promotion
-    ORDER BY StartDate DESC
+        p.PromoCode,
+        p.DiscountRate,
+        p.StartDate,
+        p.EndDate,
+        a.packageID       
+    FROM Promotion p
+    LEFT JOIN Applies_to a
+        ON p.PromoCode = a.PromoCode
+    ORDER BY p.StartDate DESC
     """
 
-    cursor.execute(query)
-    result = cursor.fetchall()
-
-    cursor.close()
-    conn.close()
-
-    return result
+    try:
+        cursor.execute(query)
+        result = cursor.fetchall()
+        return result
+    except Exception as e:
+        return {"error": str(e)}
+    finally:
+        cursor.close()
+        conn.close()
 
 @app.get("/promotion/{promo_code}")
 def get_promotion_detail(
@@ -273,51 +277,41 @@ def get_classes(user=Depends(get_current_user_any_role)):
 
 @app.get("/profile/{member_id}")
 def get_idiv_member(member_id: int, user=Depends(get_current_user_any_role)):
-
     conn = get_connection()
     cursor = conn.cursor(dictionary=True)
 
     query = """
     SELECT
-    m.Member_ID,
-    m.FirstName,
-    m.LastName,
-    m.Bdate,
-    m.Weight,
-    m.Height,
-    m.MedRec,
-
-    p.packageID,
-    p.packName,
-
-    e.EmployeeID AS TrainerID,
-    CONCAT(e.FirstName, ' ', e.LastName) AS TrainerName
-
-FROM Member m
-
-LEFT JOIN Subscribes_to s
-    ON m.Member_ID = s.Member_ID
-    AND s.Enddate >= CURDATE()
-
-LEFT JOIN Package p
-    ON s.packageID = p.packageID
-
-LEFT JOIN Trains t
-    ON m.Member_ID = t.Member_ID
-    AND t.Status = 'Active'
-
-LEFT JOIN Employee e
-    ON t.EmployeeID = e.EmployeeID
-
-WHERE m.Member_ID = %s
+        m.Member_ID,
+        m.FirstName,
+        m.LastName,
+        m.Bdate,
+        m.Weight,
+        m.Height,
+        m.MedRec,
+        p.packageID,
+        p.packName,
+        s.P_method,    
+        s.PromoCode,   -- 🔴 ดึงค่านี้ไปแสดงตอน Edit
+        e.EmployeeID AS TrainerID,
+        CONCAT(e.FirstName, ' ', e.LastName) AS TrainerName
+    FROM Member m
+    LEFT JOIN Subscribes_to s
+        ON m.Member_ID = s.Member_ID
+        AND s.Enddate >= CURDATE()
+    LEFT JOIN Package p
+        ON s.packageID = p.packageID
+    LEFT JOIN Trains t
+        ON m.Member_ID = t.Member_ID
+        AND t.Status = 'Active'
+    LEFT JOIN Employee e
+        ON t.EmployeeID = e.EmployeeID
+    WHERE m.Member_ID = %s
     """
-
     cursor.execute(query, (member_id,))
     member = cursor.fetchone()
-
     cursor.close()
     conn.close()
-
     return member
 
 @app.get("/members")
@@ -331,28 +325,40 @@ def get_members(user=Depends(get_current_user_any_role)):
         m.Member_ID,
         m.FirstName,
         m.LastName,
-        p.PackName,
-        s.P_method,
         m.MedRec,
+        p.PackName,
+        p.PackPrice,
+        s.P_method,
+        s.PromoCode, 
+        pr.DiscountRate,
+        CONCAT(e.FirstName, ' ', e.LastName) AS TrainerName,
         CASE 
             WHEN s.Enddate >= CURDATE() THEN 'Paid'
             ELSE 'Expired'
         END AS PaymentStatus
     FROM Member m
-    JOIN Subscribes_to s
-        ON m.Member_ID = s.Member_ID
-    JOIN Package p
+    LEFT JOIN Subscribes_to s
+        ON m.Member_ID = s.Member_ID AND s.Enddate >= CURDATE()
+    LEFT JOIN Package p
         ON s.PackageID = p.PackageID
+    LEFT JOIN Promotion pr
+        ON s.PromoCode = pr.PromoCode
+    LEFT JOIN Trains t
+        ON m.Member_ID = t.Member_ID AND t.Status = 'Active'
+    LEFT JOIN Employee e
+        ON t.EmployeeID = e.EmployeeID
     ORDER BY m.Member_ID
     """
 
-    cursor.execute(query)
-    result = cursor.fetchall()
-
-    cursor.close()
-    conn.close()
-
-    return result
+    try:
+        cursor.execute(query)
+        result = cursor.fetchall()
+        return result
+    except Exception as e:
+        return {"error": str(e)}
+    finally:
+        cursor.close()
+        conn.close()
     
 @app.get("/trainer/me")
 def get_current_trainer(user = Depends(require_trainer)):
@@ -1004,8 +1010,10 @@ def create_member(
     medrec: str,
     weight: float,
     height: float,
-    package_id: str = None, # ทำให้เป็น Optional
-    trainer_id: int = None, # ทำให้เป็น Optional
+    package_id: str = None, 
+    trainer_id: int = None, 
+    p_method: str = None,
+    promo_code: str = None,   # 🔴 เพิ่มตัวรับ promo_code
     user=Depends(require_manager)
 ):
     conn = get_connection()
@@ -1024,13 +1032,22 @@ def create_member(
         cursor.execute(member_query, (username, hashed_pw, firstname, lastname, bdate, medrec, weight, height))
         member_id = cursor.lastrowid
 
-        if package_id:
+        if package_id and p_method:
+            # 🔴 เพิ่ม PromoCode เข้าไปใน INSERT
             subscribe_query = """
             INSERT INTO Subscribes_to
-            (packageID, Member_ID, Startdate, Enddate, P_method)
-            VALUES (%s,%s,CURDATE(),DATE_ADD(CURDATE(), INTERVAL 1 MONTH),'PromptPay')
+            (packageID, Member_ID, Startdate, Enddate, P_method, PromoCode)
+            VALUES
+            (
+                %s,
+                %s,
+                CURDATE(),
+                DATE_ADD(CURDATE(), INTERVAL (SELECT Duration FROM Package WHERE packageID = %s) DAY),
+                %s,
+                %s
+            )
             """
-            cursor.execute(subscribe_query, (package_id, member_id))
+            cursor.execute(subscribe_query, (package_id, member_id, package_id, p_method, promo_code))
 
         if trainer_id:
             trainer_query = """
@@ -1042,14 +1059,13 @@ def create_member(
 
         conn.commit()
         return {"message": "Member created successfully", "Member_ID": member_id}
-        
+
     except Exception as e:
         conn.rollback()
         raise HTTPException(status_code=400, detail=str(e))
     finally:
         cursor.close()
         conn.close()
-
 
 @app.post("/employee/create")
 def create_employee(
@@ -1490,31 +1506,48 @@ def manager_update_member(
     height: float,
     package_id: str = None, 
     trainer_id: int = None, 
+    p_method: str = None,     
+    promo_code: str = None,   
     user=Depends(require_manager)
 ):
     conn = get_connection()
     cursor = conn.cursor()
 
     try:
+        # 1. อัปเดตข้อมูลทั่วไป
         cursor.execute("""
             UPDATE Member
             SET FirstName=%s, LastName=%s, Bdate=%s, MedRec=%s, Weight=%s, Height=%s
             WHERE Member_ID=%s
         """, (firstname, lastname, bdate, medrec, weight, height, member_id))
 
+        # 2. จัดการ Package & Promotion
         if package_id:
-            cursor.execute("""
-                UPDATE Subscribes_to
-                SET packageID=%s
-                WHERE Member_ID=%s AND Enddate >= CURDATE()
-            """, (package_id, member_id))
-
+            cursor.execute("SELECT * FROM Subscribes_to WHERE Member_ID=%s AND Enddate >= CURDATE()", (member_id,))
+            if cursor.fetchone():
+                # 🔴 ใช้ COALESCE ป้องกันข้อมูลหาย
+                cursor.execute("""
+                    UPDATE Subscribes_to
+                    SET packageID=%s, 
+                        P_method=COALESCE(%s, P_method), 
+                        PromoCode=COALESCE(%s, PromoCode)
+                    WHERE Member_ID=%s AND Enddate >= CURDATE()
+                """, (package_id, p_method, promo_code, member_id))
+            else:
+                cursor.execute("""
+                    INSERT INTO Subscribes_to (packageID, Member_ID, Startdate, Enddate, P_method, PromoCode)
+                    VALUES (%s, %s, CURDATE(), DATE_ADD(CURDATE(), INTERVAL (SELECT Duration FROM Package WHERE packageID = %s) DAY), %s, %s)
+                """, (package_id, member_id, package_id, p_method or 'Cash', promo_code))
+        
+        # 3. จัดการ Trainer (คงเดิม)
         if trainer_id:
-            cursor.execute("""
-                UPDATE Trains
-                SET EmployeeID=%s
-                WHERE Member_ID=%s AND Status='Active'
-            """, (trainer_id, member_id))
+            cursor.execute("SELECT * FROM Trains WHERE Member_ID=%s AND Status='Active'", (member_id,))
+            if cursor.fetchone():
+                cursor.execute("UPDATE Trains SET EmployeeID=%s WHERE Member_ID=%s AND Status='Active'", (trainer_id, member_id))
+            else:
+                cursor.execute("INSERT INTO Trains (EmployeeID, Member_ID, Status, StartDate) VALUES (%s, %s, 'Active', CURDATE())", (trainer_id, member_id))
+        else:
+            cursor.execute("UPDATE Trains SET Status='Inactive' WHERE Member_ID=%s AND Status='Active'", (member_id,))
 
         conn.commit()
         return {"message": "Member updated successfully"}
@@ -1522,7 +1555,6 @@ def manager_update_member(
     except Exception as e:
         conn.rollback()
         raise HTTPException(status_code=400, detail=str(e))
-
     finally:
         cursor.close()
         conn.close()
@@ -1640,48 +1672,60 @@ def manager_update_member(
     medrec: str,
     weight: float,
     height: float,
-    package_id: str,
-    trainer_id: int,
+    package_id: str = None, 
+    trainer_id: int = None, 
+    p_method: str = None,     
+    promo_code: str = None,   
     user=Depends(require_manager)
 ):
     conn = get_connection()
     cursor = conn.cursor()
 
+    if package_id == "": package_id = None
+    if trainer_id == "": trainer_id = None
+    if p_method == "": p_method = None
+    if promo_code == "": promo_code = None
+
     try:
         cursor.execute("""
             UPDATE Member
-            SET FirstName=%s,
-                LastName=%s,
-                Bdate=%s,
-                MedRec=%s,
-                Weight=%s,
-                Height=%s
+            SET FirstName=%s, LastName=%s, Bdate=%s, MedRec=%s, Weight=%s, Height=%s
             WHERE Member_ID=%s
         """, (firstname, lastname, bdate, medrec, weight, height, member_id))
 
+        # 2. จัดการ Package & Promo
+        if package_id:
+            cursor.execute("SELECT * FROM Subscribes_to WHERE Member_ID=%s AND Enddate >= CURDATE()", (member_id,))
+            if cursor.fetchone():
+                cursor.execute("""
+                    UPDATE Subscribes_to
+                    SET packageID=%s, P_method=%s, PromoCode=%s
+                    WHERE Member_ID=%s AND Enddate >= CURDATE()
+                """, (package_id, p_method, promo_code, member_id))
+            else:
+                cursor.execute("""
+                    INSERT INTO Subscribes_to (packageID, Member_ID, Startdate, Enddate, P_method, PromoCode)
+                    VALUES (%s, %s, CURDATE(), DATE_ADD(CURDATE(), INTERVAL (SELECT Duration FROM Package WHERE packageID = %s) DAY), %s, %s)
+                """, (package_id, member_id, package_id, p_method or 'Cash', promo_code))
+        else:
+            cursor.execute("UPDATE Subscribes_to SET Enddate = CURDATE() - INTERVAL 1 DAY WHERE Member_ID=%s AND Enddate >= CURDATE()", (member_id,))
 
-        cursor.execute("""
-            UPDATE Subscribes_to
-            SET packageID=%s
-            WHERE Member_ID=%s AND Enddate >= CURDATE()
-        """, (package_id, member_id))
-
-
-        cursor.execute("""
-            UPDATE Trains
-            SET EmployeeID=%s
-            WHERE Member_ID=%s AND Status='Active'
-        """, (trainer_id, member_id))
-
+        # 3. จัดการ Trainer
+        if trainer_id:
+            cursor.execute("SELECT * FROM Trains WHERE Member_ID=%s AND Status='Active'", (member_id,))
+            if cursor.fetchone():
+                cursor.execute("UPDATE Trains SET EmployeeID=%s WHERE Member_ID=%s AND Status='Active'", (trainer_id, member_id))
+            else:
+                cursor.execute("INSERT INTO Trains (EmployeeID, Member_ID, Status, StartDate) VALUES (%s, %s, 'Active', CURDATE())", (trainer_id, member_id))
+        else:
+            cursor.execute("UPDATE Trains SET Status='Inactive' WHERE Member_ID=%s AND Status='Active'", (member_id,))
 
         conn.commit()
-
         return {"message": "Member updated successfully"}
 
     except Exception as e:
         conn.rollback()
         raise HTTPException(status_code=400, detail=str(e))
-
     finally:
         cursor.close()
         conn.close()
