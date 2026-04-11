@@ -1351,10 +1351,13 @@ def create_promotion(
     cursor.close()
     conn.close()
 
-    return {
-        "message": "Promotion created successfully",
-        "PromoCode": promo_code
-    }
+    if exists:
+        raise HTTPException(
+        status_code=400,
+        detail="PromoCode already exists"
+    )
+
+    return {}
 
 @app.post("/package/create")
 def create_package(
