@@ -9,9 +9,9 @@ import AddButton from "../../components/AddButton";
 import { useEffect, useState } from "react";
 
 interface GymClass {
-    Schedule_ID: number;  
-    EmployeeID: number;   
-    Description: string;  
+    Schedule_ID: number;
+    EmployeeID: number;
+    Description: string;
     ClassName: string;
     InstructorName: string;
     ClassDate: string;
@@ -32,14 +32,14 @@ export default function Trainer_classes() {
     const [trainers, setTrainers] = useState<Trainer[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedDate, setSelectedDate] = useState(new Date());
-    
+
     // State สำหรับควบคุม Modal และ โหมด Edit
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingScheduleId, setEditingScheduleId] = useState<number | null>(null);
 
     const [formData, setFormData] = useState({
         className: "",
-        instructor: "", 
+        instructor: "",
         capacity: "",
         description: "",
         date: "",
@@ -68,7 +68,7 @@ export default function Trainer_classes() {
         } catch (error) {
             console.error("Error fetching classes:", error);
         } finally {
-            setLoading(false); 
+            setLoading(false);
         }
     };
 
@@ -111,7 +111,7 @@ export default function Trainer_classes() {
     const handleDeleteClick = async (scheduleId: number) => {
         // ใช้ Confirm Dialog ดักไว้ก่อน เผื่อกดพลาด
         const isConfirmed = window.confirm("Are you sure you want to delete this schedule? This action cannot be undone.");
-        
+
         if (!isConfirmed) return;
 
         try {
@@ -157,7 +157,7 @@ export default function Trainer_classes() {
             }
 
             const token = localStorage.getItem("token");
-            
+
             // เช็กโหมดว่ากำลัง Add หรือ Edit
             const isEditing = editingScheduleId !== null;
             const endpoint = isEditing ? "http://127.0.0.1:8000/manager/class/update" : "http://127.0.0.1:8000/class/create-full";
@@ -166,7 +166,7 @@ export default function Trainer_classes() {
             const queryParams = new URLSearchParams({
                 ...(isEditing && { schedule_id: editingScheduleId.toString() }), // ส่ง Schedule_ID ไปด้วยเฉพาะตอนแก้
                 class_name: formData.className,
-                description: formData.description || "-", 
+                description: formData.description || "-",
                 capacity: formData.capacity.toString(),
                 class_date: formData.date,
                 class_time: formData.time,
@@ -188,8 +188,8 @@ export default function Trainer_classes() {
 
             alert(`Class ${isEditing ? "updated" : "created"} successfully!`);
             handleCloseModal();
-            setLoading(true); 
-            fetchClasses(); 
+            setLoading(true);
+            fetchClasses();
 
         } catch (error) {
             console.error("Error processing class:", error);
@@ -220,20 +220,35 @@ export default function Trainer_classes() {
         return <div className="h-screen flex justify-center items-center font-bold text-2xl">Loading...</div>;
     }
 
+    // normalize helper
+    const normalizeDate = (date: Date) => {
+        return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    };
+
+    // filter only selected day classes
     const filteredClasses = classes.filter((gymClass) => {
-        const classDate = new Date(gymClass.ClassDate);
-        return classDate.toDateString() === selectedDate.toDateString();
+        const classDate = normalizeDate(new Date(gymClass.ClassDate));
+        const selected = normalizeDate(selectedDate);
+
+        return classDate.getTime() === selected.getTime();
     });
 
-    const startOfWeek = new Date(selectedDate);
-    const day = selectedDate.getDay() || 7;
-    startOfWeek.setDate(selectedDate.getDate() - day + 1);
+    // get week range
+    const selected = normalizeDate(selectedDate);
+
+    const day = selected.getDay() || 7;
+
+    const startOfWeek = new Date(selected);
+    startOfWeek.setDate(selected.getDate() - day + 1);
+
     const endOfWeek = new Date(startOfWeek);
     endOfWeek.setDate(startOfWeek.getDate() + 6);
 
+    // weekly class counts
     const weeklyClassCounts = classes
         .filter((gymClass) => {
-            const classDate = new Date(gymClass.ClassDate);
+            const classDate = normalizeDate(new Date(gymClass.ClassDate));
+
             return classDate >= startOfWeek && classDate <= endOfWeek;
         })
         .reduce((acc: Record<string, number>, gymClass) => {
@@ -294,15 +309,15 @@ export default function Trainer_classes() {
                                         </div>
                                         <div className="flex w-[20%] justify-center items-center gap-3">
                                             {/* ปุ่ม Edit */}
-                                            <button 
+                                            <button
                                                 onClick={() => handleEditClick(gymClass)}
                                                 className="flex w-[60%] h-[40%] bg-[#5F33E1] justify-center items-center rounded-2xl text-[#ffffff] font-bold text-lg hover:bg-[#4d28b8] transition-colors cursor-pointer"
                                             >
                                                 Edit
                                             </button>
-                                            
+
                                             {/* ปุ่ม Delete*/}
-                                            <button 
+                                            <button
                                                 onClick={() => handleDeleteClick(gymClass.Schedule_ID)}
                                                 className="flex w-[40px] h-[40px] bg-[#FFE0E0] justify-center items-center rounded-xl text-[#FF3B3B] hover:bg-[#FF3B3B] hover:text-white transition-colors cursor-pointer"
                                                 title="Delete Schedule"
@@ -322,7 +337,7 @@ export default function Trainer_classes() {
                 {isModalOpen && (
                     <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex justify-center items-center z-50 transition-opacity duration-300 ease-in-out">
                         <div className="bg-white rounded-3xl p-8 w-[800px] shadow-2xl relative flex flex-col gap-6">
-                            
+
                             <div className="flex justify-between items-center border-b pb-4">
                                 <h2 className="text-3xl font-bold text-[#202022]">
                                     {isEditingMode ? "Edit Class Schedule" : "Add New Class"}
@@ -336,23 +351,23 @@ export default function Trainer_classes() {
                                 <div className="flex flex-col gap-6">
                                     <div className="flex flex-col gap-2">
                                         <label className="font-bold text-lg text-[#202022]">Class Name</label>
-                                        <input 
-                                            type="text" 
-                                            name="className" 
-                                            value={formData.className} 
-                                            onChange={handleChange} 
-                                            placeholder="Enter class name" 
+                                        <input
+                                            type="text"
+                                            name="className"
+                                            value={formData.className}
+                                            onChange={handleChange}
+                                            placeholder="Enter class name"
                                             disabled={isEditingMode}
                                             className={`border rounded-lg p-3 outline-none focus:ring-2 focus:ring-[#5F33E1] text-sm ${isEditingMode ? 'bg-gray-100 text-gray-400 cursor-not-allowed border-gray-200' : 'border-[#a584ff] text-[#8c8c8c]'}`}
                                         />
                                     </div>
-                                    
+
                                     <div className="flex flex-col gap-2">
                                         <label className="font-bold text-lg text-[#202022]">Instructor</label>
-                                        <select 
-                                            name="instructor" 
-                                            value={formData.instructor} 
-                                            onChange={handleChange} 
+                                        <select
+                                            name="instructor"
+                                            value={formData.instructor}
+                                            onChange={handleChange}
                                             className="border border-[#a584ff] rounded-lg p-3 outline-none focus:ring-2 focus:ring-[#5F33E1] text-sm text-[#8c8c8c] appearance-none bg-white"
                                         >
                                             <option value="" disabled>Select an instructor</option>
@@ -366,10 +381,10 @@ export default function Trainer_classes() {
 
                                     <div className="flex flex-col gap-2">
                                         <label className="font-bold text-lg text-[#202022]">Capacity</label>
-                                        <select 
-                                            name="capacity" 
-                                            value={formData.capacity} 
-                                            onChange={handleChange} 
+                                        <select
+                                            name="capacity"
+                                            value={formData.capacity}
+                                            onChange={handleChange}
                                             disabled={isEditingMode}
                                             className={`border rounded-lg p-3 outline-none focus:ring-2 focus:ring-[#5F33E1] text-sm appearance-none ${isEditingMode ? 'bg-gray-100 text-gray-400 cursor-not-allowed border-gray-200' : 'bg-white border-[#a584ff] text-[#8c8c8c]'}`}
                                         >
@@ -383,11 +398,11 @@ export default function Trainer_classes() {
 
                                 <div className="flex flex-col gap-2 h-full">
                                     <label className="font-bold text-lg text-[#202022]">Class Description</label>
-                                    <textarea 
-                                        name="description" 
-                                        value={formData.description} 
-                                        onChange={handleChange} 
-                                        placeholder="Enter class description" 
+                                    <textarea
+                                        name="description"
+                                        value={formData.description}
+                                        onChange={handleChange}
+                                        placeholder="Enter class description"
                                         disabled={isEditingMode}
                                         className={`border rounded-lg p-3 outline-none focus:ring-2 focus:ring-[#5F33E1] h-full resize-none text-sm ${isEditingMode ? 'bg-gray-100 text-gray-400 cursor-not-allowed border-gray-200' : 'border-[#a584ff] text-[#8c8c8c]'}`}
                                     ></textarea>
@@ -398,20 +413,20 @@ export default function Trainer_classes() {
                                 <label className="font-bold text-lg text-[#202022]">Date and Time</label>
                                 <div className="flex gap-4">
                                     <div className="w-1/2 relative">
-                                        <input 
-                                            type="date" 
-                                            name="date" 
-                                            value={formData.date} 
-                                            onChange={handleChange} 
+                                        <input
+                                            type="date"
+                                            name="date"
+                                            value={formData.date}
+                                            onChange={handleChange}
                                             className="w-full border border-[#a584ff] rounded-lg p-3 outline-none focus:ring-2 focus:ring-[#5F33E1] text-sm text-[#8c8c8c]"
                                         />
                                     </div>
                                     <div className="w-1/2 relative">
-                                        <input 
-                                            type="time" 
-                                            name="time" 
-                                            value={formData.time} 
-                                            onChange={handleChange} 
+                                        <input
+                                            type="time"
+                                            name="time"
+                                            value={formData.time}
+                                            onChange={handleChange}
                                             className="w-full border border-[#a584ff] rounded-lg p-3 outline-none focus:ring-2 focus:ring-[#5F33E1] text-sm text-[#8c8c8c]"
                                         />
                                     </div>
