@@ -180,19 +180,39 @@ def get_lockers(user=Depends(get_current_user_any_role)):
     conn = get_connection()
     cursor = conn.cursor(dictionary=True)
 
+    # Update locker status 
+    sync_query = """
+    UPDATE Locker l
+    LEFT JOIN Rent r ON l.LockerID = r.LockerID
+    SET l.STATUS =
+    CASE
+        WHEN r.EndDate >= CURDATE() THEN 'Occupied'
+        ELSE 'Available'
+    END
+    WHERE l.STATUS !=
+    CASE
+        WHEN r.EndDate >= CURDATE() THEN 'Occupied'
+        ELSE 'Available'
+    END;
+    """
+    cursor.execute(sync_query)
+    conn.commit()
+
+    #Fetch part
     query = """
     SELECT
-        l.LockerID,
-        l.Zone,
-        l.STATUS,
-        CONCAT(m.FirstName, ' ', m.LastName) AS MemberName
-    FROM Locker l
-    LEFT JOIN Rent r
-        ON l.LockerID = r.LockerID
-        AND r.EndDate >= CURDATE()
-    LEFT JOIN Member m
-        ON r.Member_ID = m.Member_ID
-    ORDER BY l.LockerID
+    l.LockerID,
+    l.Zone,
+    l.STATUS,
+    r.Member_ID,
+    CONCAT(m.FirstName, ' ', m.LastName) AS MemberName
+FROM Locker l
+LEFT JOIN Rent r
+    ON l.LockerID = r.LockerID
+    AND r.EndDate >= CURDATE()
+LEFT JOIN Member m
+    ON r.Member_ID = m.Member_ID
+ORDER BY l.LockerID;
     """
 
     cursor.execute(query)
@@ -204,20 +224,25 @@ def get_lockers(user=Depends(get_current_user_any_role)):
     return result
 
 @app.get("/locker/{locker_id}")
-def get_locker_detail(
-    locker_id: str,
-    user=Depends(get_current_user_any_role)
-):
+def get_locker_detail(locker_id: str, user=Depends(get_current_user_any_role)):
 
     conn = get_connection()
     cursor = conn.cursor(dictionary=True)
 
     query = """
     SELECT
-        LockerID,
-        Zone
-    FROM Locker
-    WHERE LockerID = %s
+        l.LockerID,
+        l.Zone,
+        l.STATUS,
+        r.Member_ID,
+        CONCAT(m.FirstName, ' ', m.LastName) AS MemberName
+    FROM Locker l
+    LEFT JOIN Rent r
+        ON r.LockerID = l.LockerID
+        AND r.EndDate >= CURDATE()
+    LEFT JOIN Member m
+        ON r.Member_ID = m.Member_ID
+    WHERE l.LockerID = %s
     """
 
     cursor.execute(query, (locker_id,))
@@ -1815,17 +1840,48 @@ def manager_delete_promotion(promo_code: str, user=Depends(require_manager)):
 def manager_update_locker(
     locker_id: str,
     zone: str,
+    member_id: str = None,
     user=Depends(require_manager)
 ):
     conn = get_connection()
     cursor = conn.cursor()
+
     try:
-        cursor.execute("UPDATE Locker SET Zone=%s WHERE LockerID=%s", (zone, locker_id))
+        # update locker zone
+        cursor.execute(
+            "UPDATE Locker SET Zone=%s WHERE LockerID=%s",
+            (zone, locker_id)
+        )
+
+        # assign member (safe logic)
+        if member_id is not None and member_id != "":
+            cursor.execute("""
+                SELECT 1
+                FROM Rent
+                WHERE LockerID=%s AND EndDate >= CURDATE()
+                """, (locker_id,))
+
+            rent = cursor.fetchone()
+
+            if rent:
+                cursor.execute("""
+                    UPDATE Rent
+                    SET Member_ID=%s
+                    WHERE LockerID=%s AND EndDate >= CURDATE()
+                """, (member_id, locker_id))
+            else:
+                cursor.execute("""
+                    INSERT INTO Rent (LockerID, Member_ID, StartDate, EndDate)
+                    VALUES (%s, %s, CURDATE(), DATE_ADD(CURDATE(), INTERVAL 7 DAY))
+                """, (locker_id, member_id))
+
         conn.commit()
         return {"message": "Locker updated successfully"}
+
     except Exception as e:
         conn.rollback()
         raise HTTPException(status_code=400, detail=str(e))
+
     finally:
         cursor.close()
         conn.close()
