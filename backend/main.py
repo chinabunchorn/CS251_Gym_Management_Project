@@ -1061,6 +1061,7 @@ def create_employee(
     manager_id: int = None,
     contract_type: str = "Full-time",
     specialty: str = None,
+    start_date: str = None,
     user=Depends(get_current_user_any_role)
 ):
 
@@ -1077,7 +1078,7 @@ def create_employee(
      StartDate, Contract_Type)
     VALUES (%s,%s,%s,'Active',
             %s,%s,%s,
-            CURDATE(),%s)
+            %s,%s)
     """
 
     cursor.execute(employee_query, (
@@ -1087,6 +1088,7 @@ def create_employee(
         username,
         hashed_pw,
         manager_id,
+        start_date,
         contract_type
     ))
 
