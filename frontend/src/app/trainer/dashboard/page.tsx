@@ -9,6 +9,8 @@ export default function Trainer_dashboard() {
   const [trainer, setTrainer] = useState<any>(null);
   const [classes, setClasses] = useState<any[]>([]);
   const [client, setClient] = useState<any[]>([]);
+  const [selectedClient, setSelectedClient] = useState<any>(null);
+  const [showAllClients, setShowAllClients] = useState(false);
   const [nearestClass, setNearestClass] = useState<any>(null);
   const [upcomingClasses, setUpcomingClasses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -249,7 +251,13 @@ export default function Trainer_dashboard() {
             <div className="w-[60%] h-[55%] m-auto justify-center items-center">
               <div className="flex items-center justify-between">
                 <h1 className="text-[#202022] text-3xl font-bold">My Clients</h1>
-                <h1 className="text-[#5F33E1] text-xl font-bold">View all &gt;</h1>
+
+                <div
+                  onClick={() => setShowAllClients(true)}
+                  className="text-[#5F33E1] text-xl font-bold cursor-pointer hover:underline"
+                >
+                  View all &gt;
+                </div>
               </div>
 
               <div className="mt-3 p-4 max-h-[400px] overflow-y-auto">
@@ -269,7 +277,12 @@ export default function Trainer_dashboard() {
                         </div>
                       </div>
 
-                      <div className="bg-[#B3A0FF] w-[100px] h-[50px] rounded-xl flex justify-center items-center text-[#ffffff]">View info</div>
+                      <div
+                        onClick={() => setSelectedClient(client)}
+                        className="w-[110px] h-[40px] flex items-center justify-center rounded-lg bg-[#EDE8FF] text-[#5F33E1] font-semibold cursor-pointer hover:bg-[#DED6FF] transition"
+                      >
+                        View info
+                      </div>
                     </div>
                   ))
                 )}
@@ -279,6 +292,102 @@ export default function Trainer_dashboard() {
         </div>
 
       </div>
+      {selectedClient && (
+        <div className="fixed inset-0 flex justify-center items-center bg-black/40 z-[60]">
+          <div className="bg-white rounded-2xl p-6 w-[400px] shadow-xl text-[#202022]">
+
+            <h2 className="text-2xl font-bold mb-4 text-[#202022]">
+              {selectedClient.FullName}
+            </h2>
+
+            <div className="space-y-2 text-lg text-[#202022]">
+              <p><strong>Age:</strong> {selectedClient.Age}</p>
+              <p><strong>Medical Record:</strong> {selectedClient.MedRec}</p>
+              <p><strong>Weight:</strong> {selectedClient.Weight} kg</p>
+              <p><strong>Height:</strong> {selectedClient.Height} cm</p>
+            </div>
+
+            <button
+              onClick={() => setSelectedClient(null)}
+              className="mt-5 bg-[#5F33E1] text-white px-4 py-2 rounded-lg w-full hover:bg-[#4a28b5]"
+            >
+              Close
+            </button>
+
+          </div>
+        </div>
+      )}
+      {showAllClients && (
+        <div className="fixed inset-0 flex justify-center items-center bg-black/40 z-50">
+
+          <div className="bg-white rounded-2xl p-6 w-[600px] max-h-[600px] shadow-xl overflow-y-auto">
+
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-2xl font-bold text-[#202022]">
+                All Clients
+              </h2>
+
+              <button
+                onClick={() => setShowAllClients(false)}
+                className="text-[#5F33E1] font-semibold cursor-pointer hover:text-[#4a28b5] hover:underline transition"
+              >
+                Close
+              </button>
+            </div>
+
+
+            {client.length === 0 ? (
+
+              <div className="text-center text-xl text-gray-400">
+                No active clients
+              </div>
+
+            ) : (
+
+              client.map((c, index) => (
+
+                <div
+                  key={index}
+                  className="flex items-center justify-between mb-4 p-4 bg-[#f6f6f6] rounded-xl"
+                >
+
+                  <div className="flex gap-4 items-center">
+
+                    <div className="w-10 h-10 rounded-full bg-purple-500 flex justify-center items-center text-white font-bold">
+                      {c.FullName.charAt(0)}
+                    </div>
+
+
+                    <div>
+                      <div className="font-bold text-lg text-[#202022]">
+                        {c.FullName}
+                      </div>
+
+                      <div className="text-gray-500">
+                        {c.Age} yrs
+                      </div>
+                    </div>
+
+                  </div>
+
+
+                  <div
+                    onClick={() => setSelectedClient(c)}
+                    className="w-[110px] h-[40px] flex items-center justify-center rounded-lg bg-[#EDE8FF] text-[#5F33E1] font-semibold cursor-pointer hover:bg-[#DED6FF]"
+                  >
+                    View info
+                  </div>
+
+                </div>
+
+              ))
+
+            )}
+
+          </div>
+
+        </div>
+      )}
     </AuthGuard>
   );
 }

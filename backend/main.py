@@ -516,6 +516,9 @@ def get_trainer_clients(user=Depends(require_trainer)):
         m.Member_ID,
         CONCAT(m.FirstName, ' ', m.LastName) AS FullName,
         TIMESTAMPDIFF(YEAR, m.Bdate, CURDATE()) AS Age,
+        m.MedRec,
+        m.Weight,
+        m.Height,
         t.Status,
         t.StartDate
     FROM Trains t

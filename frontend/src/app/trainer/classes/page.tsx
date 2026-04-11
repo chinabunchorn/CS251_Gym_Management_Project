@@ -190,9 +190,7 @@ export default function Trainer_classes() {
                                                 Capacity : {gymClass.ReservedCount}/{gymClass.Capacity}
                                             </p>
                                         </div>
-                                        <div className="flex w-[20%] justify-center items-center">
-                                            <div className="flex w-[70%] h-[40%] bg-[#5F33E1] justify-center items-center rounded-2xl text-[#ffffff] font-bold text-lg">View Details</div>
-                                        </div>
+                                        <div className="flex w-[20%]"></div>
                                     </div>
                                 )
                                 ))}
