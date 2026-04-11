@@ -70,26 +70,35 @@ export default function Trainer_classes() {
             .padStart(2, "0")} ${period}`;
     }
 
-    //filter only today's class
-    const filteredClasses = classes.filter((gymClass) => {
-        const classDate = new Date(gymClass.ClassDate);
+    // normalize helper
+    const normalizeDate = (date: Date) => {
+        return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    };
 
-        return (
-            classDate.toDateString() === selectedDate.toDateString()
-        );
+    // filter only selected day classes
+    const filteredClasses = classes.filter((gymClass) => {
+        const classDate = normalizeDate(new Date(gymClass.ClassDate));
+        const selected = normalizeDate(selectedDate);
+
+        return classDate.getTime() === selected.getTime();
     });
 
-    //Get classname and amount this week
-    const startOfWeek = new Date(selectedDate);
-    const day = selectedDate.getDay() || 7;
-    startOfWeek.setDate(selectedDate.getDate() - day + 1);
+    // get week range
+    const selected = normalizeDate(selectedDate);
+
+    const day = selected.getDay() || 7;
+
+    const startOfWeek = new Date(selected);
+    startOfWeek.setDate(selected.getDate() - day + 1);
 
     const endOfWeek = new Date(startOfWeek);
     endOfWeek.setDate(startOfWeek.getDate() + 6);
 
+    // weekly class counts
     const weeklyClassCounts = classes
         .filter((gymClass) => {
-            const classDate = new Date(gymClass.ClassDate);
+            const classDate = normalizeDate(new Date(gymClass.ClassDate));
+
             return classDate >= startOfWeek && classDate <= endOfWeek;
         })
         .reduce((acc: Record<string, number>, gymClass) => {
