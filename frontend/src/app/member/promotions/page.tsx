@@ -16,6 +16,13 @@ export default function PromotionsPage() {
   const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const formatDate = (date: string) => {
+  return new Date(date).toLocaleDateString("en-GB", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
+  };
   useEffect(() => {
     //  mock data >< fetch later
     const mockData: Promotion[] = [
@@ -39,8 +46,35 @@ export default function PromotionsPage() {
 
     setTimeout(() => {
       setPromotions(mockData);
+  const fetchPromotions = async () => {
+    try {
+      const res = await fetch("http://127.0.0.1:8000/promotions", {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
+
+      if (!res.ok) throw new Error("Failed to fetch");
+
+      const data = await res.json();
+
+      const formatted: Promotion[] = data.map((item: any, index: number) => ({
+        id: index + 1,
+        title: `${item.PromoCode} - ${item.DiscountRate}% OFF`,
+        startDate: formatDate(item.StartDate),
+        endDate: formatDate(item.EndDate),
+      }));
+
+      setPromotions(formatted);
+    } catch (error) {
+      console.error("Error fetching promotions:", error);
+    } finally {
       setLoading(false);
     }, 500);
+    }
+  };
+
+    fetchPromotions();
   }, []);
 
   return (
@@ -75,6 +109,7 @@ export default function PromotionsPage() {
               {/* Image */}
               <img
                 src={promo.image}
+                //src={promo.image}
                 alt={promo.title}
                 className="w-full object-cover rounded-xl"
               />

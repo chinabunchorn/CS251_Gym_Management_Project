@@ -10,6 +10,7 @@ type Locker = {
   status: string;
   startDate: string;
   endDate: string;
+  duration: number;
 };
 
 export default function LockerPage() {
@@ -28,12 +29,42 @@ export default function LockerPage() {
 
     setTimeout(() => {
       setLocker(mockLocker);
+  const fetchLocker = async () => {
+    try {
+      const res = await fetch("http://127.0.0.1:8000/member/locker", {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
+
+      if (!res.ok) throw new Error("Failed to fetch locker");
+
+      const data = await res.json();
+
+      const formatted = {
+        id: `Locker ${data.LockerID}`,
+        zone: data.Zone,
+        status: data.STATUS,
+        startDate: data.StartDate,
+        endDate: data.EndDate,
+        duration: data.RentDurationDays,
+      };
+
+      setLocker(formatted);
+    } catch (error) {
+      console.error("Error fetching locker:", error);
+    } finally {
       setLoading(false);
     }, 500);
+    }
+  };
+
+    fetchLocker();
   }, []);
 
   return (
     //<AuthGuard>
+    <AuthGuard>
     <div className="min-h-screen bg-white p-4">
       
       {/* Header */}
@@ -109,5 +140,6 @@ export default function LockerPage() {
       </p>
     </div>
     //</AuthGuard>
+    </AuthGuard>
   );
 }

@@ -24,11 +24,38 @@ export default function Member_dashboard() {
       { id: 5, name: "Stair Climber", total: 2, available: 2 },
       { id: 6, name: "Cable Row", total: 2, available: 2 },
     ];
+    const fetchEquipment = async () => {
+      try {
+        const res = await fetch("http://127.0.0.1:8000/equipment", {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        });
 
     setTimeout(() => {
       setEquipment(mockData);
       setLoading(false);
     }, 500);
+        if (!res.ok) throw new Error("Failed to fetch");
+
+        const data = await res.json();
+
+        const formatted = data.map((item: any) => ({
+          id: item.Equipment_ID,
+          name: item.Equipment,
+          total: 1,
+          available: item.STATUS === "Available" ? 1 : 0,
+        }));
+
+        setEquipment(formatted);
+      } catch (error) {
+        console.error("Error fetching equipment:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchEquipment();
   }, []);
 
   return (
