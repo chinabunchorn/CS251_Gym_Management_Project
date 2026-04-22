@@ -18,17 +18,6 @@ export default function LockerPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    //  mock data >< fetch later
-    const mockLocker: Locker = {
-      id: "Locker 1A",
-      zone: "Zone A",
-      status: "Active",
-      startDate: "1 Apr 2026",
-      endDate: "1 May 2026",
-    };
-
-    setTimeout(() => {
-      setLocker(mockLocker);
   const fetchLocker = async () => {
     try {
       const res = await fetch("http://127.0.0.1:8000/member/locker", {
@@ -55,7 +44,6 @@ export default function LockerPage() {
       console.error("Error fetching locker:", error);
     } finally {
       setLoading(false);
-    }, 500);
     }
   };
 
@@ -63,7 +51,6 @@ export default function LockerPage() {
   }, []);
 
   return (
-    //<AuthGuard>
     <AuthGuard>
     <div className="min-h-screen bg-white p-4">
       
@@ -139,7 +126,6 @@ export default function LockerPage() {
         if you'd like to extend your locker, please contact your gym’s manager
       </p>
     </div>
-    //</AuthGuard>
     </AuthGuard>
   );
 }

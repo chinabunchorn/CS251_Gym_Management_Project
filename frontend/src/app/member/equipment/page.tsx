@@ -15,48 +15,35 @@ export default function Member_dashboard() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // mock data >< fetch later
-    const mockData: Equipment[] = [
-      { id: 1, name: "Treadmill", total: 5, available: 5 },
-      { id: 2, name: "Smith Machine", total: 2, available: 2 },
-      { id: 3, name: "Leg Press", total: 1, available: 1 },
-      { id: 4, name: "Lat Pulldown", total: 2, available: 1 },
-      { id: 5, name: "Stair Climber", total: 2, available: 2 },
-      { id: 6, name: "Cable Row", total: 2, available: 2 },
-    ];
-    const fetchEquipment = async () => {
-      try {
-        const res = await fetch("http://127.0.0.1:8000/equipment", {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-        });
+  const fetchEquipment = async () => {
+    try {
+      const res = await fetch("http://127.0.0.1:8000/equipment", {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
 
-    setTimeout(() => {
-      setEquipment(mockData);
+      if (!res.ok) throw new Error("Failed to fetch");
+
+      const data = await res.json();
+
+      const formatted = data.map((item: any) => ({
+        id: item.Equipment_ID,
+        name: item.Equipment,
+        total: 1,
+        available: item.STATUS === "Available" ? 1 : 0,
+      }));
+
+      setEquipment(formatted);
+    } catch (error) {
+      console.error("Error fetching equipment:", error);
+    } finally {
       setLoading(false);
-    }, 500);
-        if (!res.ok) throw new Error("Failed to fetch");
+    }
+  };
 
-        const data = await res.json();
-
-        const formatted = data.map((item: any) => ({
-          id: item.Equipment_ID,
-          name: item.Equipment,
-          total: 1,
-          available: item.STATUS === "Available" ? 1 : 0,
-        }));
-
-        setEquipment(formatted);
-      } catch (error) {
-        console.error("Error fetching equipment:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchEquipment();
-  }, []);
+  fetchEquipment();
+}, []);
 
   return (
     //<AuthGuard>
