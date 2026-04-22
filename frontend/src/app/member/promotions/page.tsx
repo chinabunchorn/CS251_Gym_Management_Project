@@ -16,35 +16,43 @@ export default function PromotionsPage() {
   const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const formatDate = (date: string) => {
+  return new Date(date).toLocaleDateString("en-GB", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
+  };
   useEffect(() => {
-    //  mock data >< fetch later
-    const mockData: Promotion[] = [
-      {
-        id: 1,
-        title: "PT Promotion",
-        image:
-          "https://images.unsplash.com/photo-1599058917212-d750089bc07e?q=80&w=800",
-        startDate: "1 Apr 2026",
-        endDate: "30 Apr 2026",
-      },
-      {
-        id: 2,
-        title: "Promo 20",
-        image:
-          "https://images.unsplash.com/photo-1571902943202-507ec2618e8f?q=80&w=800",
-        startDate: "1 Apr 2026",
-        endDate: "5 Apr 2026",
-      },
-    ];
+  const fetchPromotions = async () => {
+    try {
+      const res = await fetch("http://127.0.0.1:8000/promotions");
 
-    setTimeout(() => {
-      setPromotions(mockData);
+      if (!res.ok) throw new Error("Failed to fetch promotions");
+
+      const data = await res.json();
+
+      const formatted: Promotion[] = data.map((item: any) => ({
+        id: item.Promotion_ID,
+        title: item.Title,
+        image: item.Image_URL,
+        startDate: formatDate(item.StartDate),
+        endDate: formatDate(item.EndDate),
+      }));
+
+      setPromotions(formatted);
+    } catch (error) {
+      console.error("Error fetching promotions:", error);
+    } finally {
       setLoading(false);
-    }, 500);
-  }, []);
+    }
+  };
+
+  fetchPromotions();
+}, []);
 
   return (
-    //<AuthGuard>
+    <AuthGuard>
       <div className="min-h-screen bg-white p-4">
         
         {/* Header */}
@@ -75,6 +83,7 @@ export default function PromotionsPage() {
               {/* Image */}
               <img
                 src={promo.image}
+                //src={promo.image}
                 alt={promo.title}
                 className="w-full object-cover rounded-xl"
               />
