@@ -56,9 +56,9 @@ export default function Manager_dashboard() {
         const headers = { Authorization: `Bearer ${token}` };
         try {
             const [statsRes, classesRes, trainersRes] = await Promise.all([
-                fetch("http://127.0.0.1:8000/dashboard/stats", { headers }),
-                fetch("http://127.0.0.1:8000/classes", { headers }),
-                fetch("http://127.0.0.1:8000/trainers", { headers }),
+                fetch(`${process.env.NEXT_PUBLIC_API_URL}/dashboard/stats`, { headers }),
+                fetch(`${process.env.NEXT_PUBLIC_API_URL}/classes`, { headers }),
+                fetch(`${process.env.NEXT_PUBLIC_API_URL}/trainers`, { headers }),
             ]);
             if (statsRes.ok) setStats(await statsRes.json());
             if (classesRes.ok) {

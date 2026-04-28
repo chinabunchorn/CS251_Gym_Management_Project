@@ -32,7 +32,7 @@ export default function Manager_equipment() {
         const token = localStorage.getItem("token");
 
         try {
-            const res = await fetch("http://127.0.0.1:8000/equipment", {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/equipment`, {
                 headers: {
                     Authorization: `Bearer ${token}`,
                 },
@@ -63,7 +63,7 @@ export default function Manager_equipment() {
             setForm(null);
 
             const res = await fetch(
-                `http://127.0.0.1:8000/equipment/${equipment_id}`,
+                `${process.env.NEXT_PUBLIC_API_URL}/equipment/${equipment_id}`,
                 {
                     headers: {
                         Authorization: `Bearer ${token}`,
@@ -118,7 +118,7 @@ export default function Manager_equipment() {
 
             const query = new URLSearchParams(payload).toString();
 
-            await fetch(`http://127.0.0.1:8000/manager/equipment/update?${query}`, {
+            await fetch(`${process.env.NEXT_PUBLIC_API_URL}/manager/equipment/update?${query}`, {
                 method: "PUT",
                 headers: {
                     Authorization: `Bearer ${token}`,
@@ -161,7 +161,7 @@ export default function Manager_equipment() {
 
             const query = new URLSearchParams(payload).toString();
 
-            const res = await fetch(`http://127.0.0.1:8000/equipment/create?${query}`, {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/equipment/create?${query}`, {
                 method: "POST",
                 headers: {
                     Authorization: `Bearer ${token}`,
@@ -187,7 +187,7 @@ export default function Manager_equipment() {
 
         try {
             const token = localStorage.getItem("token");
-            const res = await fetch(`http://127.0.0.1:8000/manager/equipment/delete/${EquipmentID}`, {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/manager/equipment/delete/${EquipmentID}`, {
                 method: "DELETE",
                 headers: { Authorization: `Bearer ${token}` },
             });

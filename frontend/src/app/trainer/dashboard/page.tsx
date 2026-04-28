@@ -79,13 +79,13 @@ export default function Trainer_dashboard() {
       try {
         //Call 3 API
         const [trainerRes, classesRes, clientRes] = await Promise.all([
-          fetch("http://localhost:8000/trainer/me", {
+          fetch(`${process.env.NEXT_PUBLIC_API_URL}/trainer/me`, {
             headers: { Authorization: `Bearer ${token}` },
           }),
-          fetch("http://localhost:8000/trainer/classes", {
+          fetch(`${process.env.NEXT_PUBLIC_API_URL}/trainer/classes`, {
             headers: { Authorization: `Bearer ${token}` },
           }),
-          fetch("http://localhost:8000/trainer/clients", {
+          fetch(`${process.env.NEXT_PUBLIC_API_URL}/trainer/clients`, {
             headers: { Authorization: `Bearer ${token}` },
           })
         ]);

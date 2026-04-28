@@ -30,10 +30,10 @@ export default function Trainer_schedule() {
             const token = localStorage.getItem("token");
 
             const [trainerRes, classesRes] = await Promise.all([
-                fetch("http://localhost:8000/trainer/me", {
+                fetch(`${process.env.NEXT_PUBLIC_API_URL}/trainer/me`, {
                     headers: { Authorization: `Bearer ${token}` },
                 }),
-                fetch("http://localhost:8000/trainer/classes", {
+                fetch(`${process.env.NEXT_PUBLIC_API_URL}/trainer/classes`, {
                     headers: { Authorization: `Bearer ${token}` },
                 })
             ]);
@@ -185,4 +185,3 @@ export default function Trainer_schedule() {
         </AuthGuard>
     )
 }
-

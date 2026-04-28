@@ -26,7 +26,7 @@ export default function PromotionsPage() {
   useEffect(() => {
   const fetchPromotions = async () => {
     try {
-      const res = await fetch("http://127.0.0.1:8000/promotions");
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/promotions`);
 
       if (!res.ok) throw new Error("Failed to fetch promotions");
 

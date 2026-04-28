@@ -29,7 +29,7 @@ export default function Trainer_classes() {
         try {
             const token = localStorage.getItem("token");
 
-            const response = await fetch("http://127.0.0.1:8000/classes", {
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/classes`, {
                 method: "GET",
                 headers: {
                     "Content-Type": "application/json",
@@ -201,4 +201,3 @@ export default function Trainer_classes() {
         </AuthGuard>
     )
 }
-

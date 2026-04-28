@@ -54,7 +54,7 @@ export default function Trainer_classes() {
     const fetchClasses = async () => {
         try {
             const token = localStorage.getItem("token");
-            const response = await fetch("http://127.0.0.1:8000/classes", {
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/classes`, {
                 method: "GET",
                 headers: {
                     "Content-Type": "application/json",
@@ -75,7 +75,7 @@ export default function Trainer_classes() {
     const fetchTrainers = async () => {
         try {
             const token = localStorage.getItem("token");
-            const response = await fetch("http://127.0.0.1:8000/trainers", {
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/trainers`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             if (response.ok) {
@@ -116,7 +116,7 @@ export default function Trainer_classes() {
 
         try {
             const token = localStorage.getItem("token");
-            const response = await fetch(`http://127.0.0.1:8000/manager/schedule/delete/${scheduleId}`, {
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/manager/schedule/delete/${scheduleId}`, {
                 method: "DELETE",
                 headers: {
                     Authorization: `Bearer ${token}`,
@@ -160,7 +160,9 @@ export default function Trainer_classes() {
 
             // เช็กโหมดว่ากำลัง Add หรือ Edit
             const isEditing = editingScheduleId !== null;
-            const endpoint = isEditing ? "http://127.0.0.1:8000/manager/class/update" : "http://127.0.0.1:8000/class/create-full";
+            const endpoint = isEditing
+                ? `${process.env.NEXT_PUBLIC_API_URL}/manager/class/update`
+                : `${process.env.NEXT_PUBLIC_API_URL}/class/create-full`;
             const method = isEditing ? "PUT" : "POST";
 
             const queryParams = new URLSearchParams({
