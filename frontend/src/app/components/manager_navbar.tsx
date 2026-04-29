@@ -1,11 +1,32 @@
 "use client";
 
 import Link from "next/link";
+import SignOutIcon from "../member/components/icons/SignOutIcon";
 
 export default function Navbar() {
+
+  const handleLogout = async () => {
+    try {
+      const token = localStorage.getItem("token");
+
+      await fetch("http://localhost:8000/logout", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      localStorage.removeItem("token");
+      localStorage.removeItem("role");
+      window.location.href = "/login";
+    } catch (err) {
+      console.error("Logout failed:", err);
+    }
+  };
+
   return (
     <div className="w-full bg-[#EDE8FF] flex items-center justify-between px-8 py-4 text-[#1A1A1B]">
-      
+
       {/* Left Logo */}
       <div className="flex items-center gap-2">
         <img src="/trainer/logo.png" className="h-8" />
@@ -13,7 +34,7 @@ export default function Navbar() {
 
       {/* Center Menu */}
       <div className="flex items-center gap-15 text-gray-800 font-medium">
-        
+
         <div className="flex items-center gap-2 cursor-pointer hover:text-[#896CFE]">
           <img src="/trainer/home.png" className="h-8" />
           <Link href="/manager/dashboard">HOME</Link>
@@ -52,12 +73,19 @@ export default function Navbar() {
       </div>
 
       {/* Right Profile */}
-      <div className="w-10 h-10 rounded-full overflow-hidden">
+      <div className="h-full flex gap-[20px]">
         <img
           src="/trainer/profile.jpg"
-          alt="Latte"
-          className="w-full h-full object-cover"
+          alt="Profile"
+          className="w-10 h-10 rounded-full object-cover"
         />
+
+        <button
+          onClick={handleLogout}
+          className="cursor-pointer w-10 h-10"
+        >
+          <SignOutIcon className="text-red-500 w-5 h-5" />
+        </button>
       </div>
 
     </div>
