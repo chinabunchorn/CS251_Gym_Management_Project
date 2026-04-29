@@ -15,10 +15,7 @@ export default function LoginPage() {
     setError("");
 
     try {
-      // Use the environment variable, fallback to localhost for local testing
-      const backendUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-      
-      const res = await fetch(`${backendUrl}/login`, {
+      const res = await fetch("http://localhost:8000/login/", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, password }),
