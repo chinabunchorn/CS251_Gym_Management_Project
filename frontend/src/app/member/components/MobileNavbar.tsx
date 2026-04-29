@@ -83,6 +83,7 @@ export default function MobileNavbar({ open, setOpen, member }: Props) {
       });
 
       localStorage.removeItem("token");
+      localStorage.removeItem("role");
       router.push("/login");
     } catch (err) {
       console.error("Logout failed:", err);
