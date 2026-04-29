@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import AuthGuard from "../../components/AuthGuard";
 
 type Locker = {
   id: string;
@@ -51,7 +50,6 @@ export default function LockerPage() {
   }, []);
 
   return (
-    <AuthGuard>
     <div className="min-h-screen bg-white p-4">
       
       {/* Header */}
@@ -126,6 +124,5 @@ export default function LockerPage() {
         if you'd like to extend your locker, please contact your gym’s manager
       </p>
     </div>
-    </AuthGuard>
   );
 }

@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import MobileHeader from "./components/MobileHeader";
 import MobileNavbar from "./components/MobileNavbar";
+import AuthGuard from "../components/AuthGuard"
+
 import { Member } from "./type";
 
 export default function ClientLayout({
@@ -37,16 +39,18 @@ export default function ClientLayout({
   }, []);
 
   return (
-    <>
-      <MobileNavbar open={open} setOpen={setOpen} member={member} />
+    <AuthGuard>
+      <>
+        <MobileNavbar open={open} setOpen={setOpen} member={member} />
 
-      <div className="w-full max-w-sm mx-auto min-h-screen bg-white shadow">
-        <div className="p-4">
-          <MobileHeader onMenuClick={() => setOpen(true)} />
+        <div className="w-full max-w-sm mx-auto min-h-screen bg-white shadow">
+          <div className="p-4">
+            <MobileHeader onMenuClick={() => setOpen(true)} />
+          </div>
+
+          <div className="p-4">{children}</div>
         </div>
-
-        <div className="p-4">{children}</div>
-      </div>
-    </>
+      </>
+    </AuthGuard>
   );
 }
