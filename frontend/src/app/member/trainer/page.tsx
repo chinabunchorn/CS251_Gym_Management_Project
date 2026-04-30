@@ -20,7 +20,7 @@ export default function TrainersPage() {
     const fetchTrainers = async () => {
       try {
         const token = localStorage.getItem("token");
-        if (!token) throw new Error("No token found");
+        if (!token) throw new Error("No token found. Please log in.");
 
         const res = await fetch("http://127.0.0.1:8000/trainers", {
           headers: {
@@ -28,7 +28,10 @@ export default function TrainersPage() {
           },
         });
 
-        if (!res.ok) throw new Error("Failed to fetch trainers");
+        if (!res.ok) {
+          const errorText = await res.text();
+          throw new Error(`Failed to fetch: ${errorText || res.status}`);
+        }
 
         const data = await res.json();
         setTrainers(data);
@@ -44,19 +47,23 @@ export default function TrainersPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-white p-4">
-      {/* Title */}
-      <div className="flex items-center justify-center gap-2 mb-8">
-        <span className="text-2xl"></span>
-        <h2 className="text-lg font-extrabold text-black">Meet our Trainers</h2>
+    <div className="min-h-screen bg-[#F8F9FC] p-4 flex flex-col items-center">
+      
+      {/* Title Section คุมโทน */}
+      <div className="w-full max-w-md mt-6 mb-8 flex flex-col items-center">
+        <h2 className="text-2xl font-extrabold text-gray-900">Meet our Trainers</h2>
+        <div className="border-t-2 border-gray-900 w-16 mt-3"></div>
       </div>
 
       {/* Loading & Error States */}
-      {loading && <p className="text-center">Loading...</p>}
-      {error && <p className="text-center text-red-500">{error}</p>}
+      {loading && <p className="text-gray-500 font-medium text-sm">Loading trainers...</p>}
+      {error && (
+        <div className="w-full max-w-md bg-red-50 text-red-500 p-3 rounded-xl border border-red-200 text-sm text-center">
+          {error}
+        </div>
+      )}
 
-      {/* Trainers List */}
-      <div className="max-w-sm mx-auto mb-5 flex flex-col gap-4">
+      <div className="w-full max-w-md flex flex-col gap-4">
         {!loading &&
           !error &&
           trainers.map((trainer) => (
@@ -66,7 +73,7 @@ export default function TrainersPage() {
               lastName={trainer.LastName}
               specialty={trainer.Specialty}
             />
-          ))}         
+          ))}
       </div>
     </div>
   );
