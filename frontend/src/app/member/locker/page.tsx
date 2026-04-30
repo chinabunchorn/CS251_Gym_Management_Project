@@ -3,126 +3,109 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 
-type Locker = {
-  id: string;
-  zone: string;
-  status: string;
-  startDate: string;
-  endDate: string;
-  duration: number;
-};
+type MyLocker = {
+  LockerID: string;
+  Zone: string;
+  STATUS: string;
+} | null;
 
-export default function LockerPage() {
-  const [locker, setLocker] = useState<Locker | null>(null);
+export default function YourLockerPage() {
+  const [locker, setLocker] = useState<MyLocker>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-  const fetchLocker = async () => {
-    try {
-      const res = await fetch("http://127.0.0.1:8000/member/locker", {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-      });
+    const fetchMyLocker = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        
+        const res = await fetch("http://127.0.0.1:8000/member/my-locker", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
 
-      if (!res.ok) throw new Error("Failed to fetch locker");
+        if (res.status === 404) {
+          setLocker(null);
+          return;
+        }
 
-      const data = await res.json();
+        if (!res.ok) throw new Error("Failed to fetch locker");
 
-      const formatted = {
-        id: `Locker ${data.LockerID}`,
-        zone: data.Zone,
-        status: data.STATUS,
-        startDate: data.StartDate,
-        endDate: data.EndDate,
-        duration: data.RentDurationDays,
-      };
+        const data = await res.json();
+        setLocker(data);
+      } catch (error) {
+        console.error(error);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-      setLocker(formatted);
-    } catch (error) {
-      console.error("Error fetching locker:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-    fetchLocker();
+    fetchMyLocker();
   }, []);
 
   return (
-    <div className="min-h-screen bg-white p-4">
-      
-      {/* Header */}
-      {/* <div className="flex items-center justify-between mb-6">
-        <h1 className="text-lg font-semibold text-black">Locker</h1>
-      </div> */}
-
+    <div className="min-h-screen bg-[#F8F9FC] p-4 flex flex-col items-center">
       {/* Title */}
-      <div className="flex items-center justify-center gap-2 mb-2">
-        <span className="text-2xl">🗄️</span>
-        <h2 className="text-lg font-extrabold text-black">Your Locker</h2>
+      <div className="w-full max-w-md mt-6 mb-8 flex flex-col items-center">
+        <h2 className="text-2xl font-extrabold text-gray-900">Your Locker</h2>
+        <div className="border-t-2 border-gray-900 w-16 mt-3"></div>
       </div>
 
-        <div className="border-t border-[#000000] w-full mt-2 mb-2"></div>
-
-      {/* Divider */}
-      
-
-      {/* Locker pic */}
-        <img
-          src="/locker/locker.png"
-          alt="gym"
-          className="block mx-auto w-[32px] h-[32px] object-cover  p-4"
-        />
-
-      {/* Bottom line */}
-      <div className="w-full h-[4px] bg-black mb-6"></div>
-
-      {/* Loading */}
-      {loading && <p>Loading...</p>}
-
-      {/* Locker Card */}
-      {locker && (
-        <div className="bg-white rounded-2xl shadow p-5 text-center max-w-sm mx-auto mb-5">
-          <h3 className="font-bold text-lg text-gray-800 mb-1">
-            {locker.id}
-          </h3>
-
-          <p className="text-sm font-semibold text-black">{locker.zone}</p>
-
-          <p className="text-sm font-semibold text-black mt-2">
-            Status :{" "}
-            <span className="font-semibold text-black">
-              {locker.status}
+      {loading ? (
+        <p className="text-gray-500 font-medium">Loading your locker...</p>
+      ) : locker ? (
+        
+        <div className="w-full max-w-sm bg-white rounded-3xl shadow-sm border border-gray-200 p-6 flex flex-col items-center text-center">
+          <h3 className="text-3xl font-black text-gray-900">{locker.LockerID}</h3>
+          
+          <div className="flex gap-2 mt-3">
+            <span className="bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-sm font-bold">
+              {locker.Zone}
             </span>
-          </p>
-
-          <p className="text-sm font-semibold text-black mt-2">
-            Rent Duration : 1 Month
-          </p>
-
-          <div className="w-full h-[1px] bg-gray-300 my-2"></div>
-
-          {/* Dates */}
-          <div className="border-t border-[#000000] w-full mt-2 mb-2"></div>
-          <div className="text-sm font-semibold text-black">
-            <p> Start Date : {locker.startDate}</p>
-            <p className="mt-2"> Expires : {locker.endDate}</p>
+            <span className="bg-[#EDE8FF] text-[#5F33E1] px-3 py-1 rounded-full text-sm font-bold">
+              {locker.STATUS}
+            </span>
           </div>
 
-          {/* back to home */}
-          <Link href="/member">
-            <button className="mt-4 w-full bg-[#EDE8FF] text-[#5F33E1] py-2 rounded-xl font-medium">
-              Back to Home
+          <div className="w-full border-t border-dashed border-gray-300 my-6"></div>
+
+          <p className="text-xs text-gray-500">
+            To extend your rental period or change lockers, please contact the gym manager.
+          </p>
+          
+          <Link href="/member" className="w-full mt-4">
+            <button className="w-full bg-[#F3F4F6] text-gray-700 hover:bg-gray-200 py-3 rounded-xl font-bold transition">
+              Back to Dashboard
             </button>
           </Link>
         </div>
-      )}
 
-      {/* Footer text */}
-      <p className="text-xs text-gray-500 text-center ">
-        if you'd like to extend your locker, please contact your gym’s manager
-      </p>
+      ) : (
+
+        <div className="w-full max-w-sm bg-white rounded-3xl shadow-sm border border-gray-200 p-8 flex flex-col items-center text-center">
+          <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4 text-3xl opacity-50">
+            🔒
+          </div>
+          <h3 className="text-lg font-bold text-gray-900">No Active Locker</h3>
+          <p className="text-sm text-gray-500 mt-2 mb-6">
+            You currently don't have a locker assigned to your account.
+          </p>
+          
+          <div className="bg-[#FFF8E1] border border-[#FFE082] rounded-xl p-4 w-full">
+            <p className="text-sm text-[#F57F17] font-semibold">
+              Want to rent a locker? <br/>
+              <span className="font-normal text-xs mt-1 block text-[#FF6F00]">
+                Please contact the gym reception or the manager at the front desk to reserve your space.
+              </span>
+            </p>
+          </div>
+
+          <Link href="/member" className="w-full mt-6">
+            <button className="w-full bg-[#EDE8FF] text-[#5F33E1] py-3 rounded-xl font-bold transition">
+              Back to Dashboard
+            </button>
+          </Link>
+        </div>
+
+      )}
     </div>
   );
 }

@@ -1,105 +1,113 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import AuthGuard from "../../components/AuthGuard";
+// import AuthGuard from "../../components/AuthGuard";
 
-type Equipment = {
-  id: number;
+// ตัด id ทิ้งไปเลย เพราะเราจะใช้ชื่อ (name) เป็น key ในการจัดกลุ่ม
+type GroupedEquipment = {
   name: string;
   total: number;
   available: number;
 };
 
-export default function Member_dashboard() {
-  const [equipment, setEquipment] = useState<Equipment[]>([]);
+// เปลี่ยนชื่อ Function ให้สื่อความหมายตรงกับหน้า
+export default function EquipmentPage() {
+  const [equipment, setEquipment] = useState<GroupedEquipment[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-  const fetchEquipment = async () => {
-    try {
-      const res = await fetch("http://127.0.0.1:8000/equipment", {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-      });
+    const fetchEquipment = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        if (!token) throw new Error("No token found");
 
-      if (!res.ok) throw new Error("Failed to fetch");
+        const res = await fetch("http://127.0.0.1:8000/equipment", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
 
-      const data = await res.json();
+        if (!res.ok) throw new Error("Failed to fetch equipment");
 
-      const formatted = data.map((item: any) => ({
-        id: item.Equipment_ID,
-        name: item.Equipment,
-        total: 1,
-        available: item.STATUS === "Available" ? 1 : 0,
-      }));
+        const data = await res.json();
 
-      setEquipment(formatted);
-    } catch (error) {
-      console.error("Error fetching equipment:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
-  fetchEquipment();
-}, []);
+        const groupedData = data.reduce((acc: Record<string, GroupedEquipment>, item: any) => {
+          const name = item.Equipment;
+          
+          if (!acc[name]) {
+            acc[name] = { name: name, total: 0, available: 0 };
+          }
+          
+          acc[name].total += 1;
+          
+          if (item.STATUS === "Available") {
+            acc[name].available += 1;
+          }
+          
+          return acc;
+        }, {});
+
+        setEquipment(Object.values(groupedData));
+      } catch (error) {
+        console.error("Error fetching equipment:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchEquipment();
+  }, []);
 
   return (
     //<AuthGuard>
-      <div className="min-h-screen bg-white p-4">
+    <div className="min-h-screen bg-white p-4">
+      <h2 className="text-sm font-bold text-black mb-4">
+        Check Equipment Availability
+      </h2>
+
+      {/* Loading */}
+      {loading && <p className="text-center text-gray-500 text-sm">Loading...</p>}
+
+      {/* Equipment List */}
+      <div className="space-y-4 max-w-md mx-auto">
+        {!loading && equipment.length === 0 && (
+          <p className="text-center text-gray-500 text-sm">No equipment found.</p>
+        )}
         
-        {/* Header */}
-        {/* <div className="flex items-center justify-between mb-6">
-          <h1 className="text-xl font-semibold text-gray-800">
-            Equipment
-          </h1>
-          <div className="text-2xl">≡</div>
-        </div> */}
+        {equipment.map((item) => {
+          const isAvailable = item.available > 0;
+          const underMaintenance = item.total - item.available;
 
-        <h2 className="text-sm font-bold text-black mb-4">
-          Check Equipment Availability
-        </h2>
-
-        {/* Loading */}
-        {loading && <p>Loading...</p>}
-
-        {/* Equipment List */}
-        <div className="space-y-4">
-          {equipment.map((item) => {
-            const isAvailable = item.available > 0;
-
-            return (
-              <div
-                key={item.id}
-                className="bg-white rounded-2xl shadow p-4 flex justify-between items-center"
-              >
-                <div>
-                  <h3 className="font-extrabold text-black">
-                    {item.name}
-                  </h3>
-                  <p className="text-sm font-semibold text-black">
-                    {item.total} Machines
-                  </p>
-                </div>
-
-                {/* Status */}
-                <div
-                  className={`px-3 py-1 rounded-xl text-sm font-medium ${
-                    isAvailable
-                      ? "bg-[#EDE8FF] text-[#5F33E1]"
-                      : "bg-[#FFD6EB] text-[#F579AD]"
-                  }`}
-                >
-                  {isAvailable
-                    ? "Available"
-                    : `${item.total - item.available} Maintenance`}
-                </div>
+          return (
+            <div
+              key={item.name} 
+              className="bg-white rounded-2xl shadow p-4 flex justify-between items-center border border-gray-100"
+            >
+              <div>
+                <h3 className="font-extrabold text-black">{item.name}</h3>
+                <p className="text-sm font-semibold text-gray-500 mt-0.5">
+                  {item.total} Machines
+                </p>
               </div>
-            );
-          })}
-        </div>
+
+              {/* Status Badge */}
+              <div
+                className={`px-3 py-1.5 rounded-xl text-sm font-bold ${
+                  isAvailable
+                    ? "bg-[#EDE8FF] text-[#5F33E1]"
+                    : "bg-[#FFD6EB] text-[#F579AD]"
+                }`}
+              >
+                {isAvailable
+                  ? `${item.available} Available`
+                  : `${underMaintenance} Maintenance`}
+              </div>
+            </div>
+          );
+        })}
       </div>
+    </div>
     //</AuthGuard>
   );
 }
