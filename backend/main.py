@@ -4,6 +4,7 @@ from database import get_connection
 from auth import verify_password, create_access_token, seconds_to_time
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+import mysql.connector
 from auth import hash_password  
 
 app = FastAPI()
@@ -711,7 +712,7 @@ def member_login(payload: UserLogin):
     token = create_access_token({"sub": user["Username"], "role": "member"})
     print("Login attempt:", payload.username, payload.password)
     print("User fetched from DB:", user)
-    return {"access_token": token, "token_type": "bearer", "role": "member"}
+    return {"access_token": token, "token_type": "bearer", "role": "member", "member_id": user["Member_ID"]}
 
 @app.post("/login/employee")
 def employee_login(payload: UserLogin):
@@ -729,7 +730,7 @@ def employee_login(payload: UserLogin):
     token = create_access_token({"sub": user["Username"], "role": "employee"})
     print("Login attempt:", payload.username, payload.password)
     print("User fetched from DB:", user)
-    return {"access_token": token, "token_type": "bearer", "role": "employee"}
+    return {"access_token": token, "token_type": "bearer", "role": "employee", "employee_id": user["EmployeeID"]}
 
 @app.post("/login")
 def login(payload: UserLogin):
@@ -800,7 +801,8 @@ def login(payload: UserLogin):
     return {
         "access_token": token,
         "token_type": "bearer",
-        "role": role
+        "role": role,
+        "member_id": user.get("Member_ID")
     }
 
 @app.post("/attendance/checkin")
@@ -945,18 +947,32 @@ def require_equipment(class_id: str, equipment_id: str,user=Depends(get_current_
 
 
 @app.post("/reserve")
-def reserve_class(member_id: int, schedule_id: int,user=Depends(get_current_user_any_role)):
-
+def reserve_class(member_id: int, schedule_id: int, user=Depends(get_current_user_any_role)):
     conn = get_connection()
     cursor = conn.cursor()
 
-    query = """
-    INSERT INTO Reserves (Member_ID, Schedule_ID)
-    VALUES (%s, %s)
-    """
+    try:
+        query = """
+        INSERT INTO Reserves (Member_ID, Schedule_ID)
+        VALUES (%s, %s)
+        """
+        cursor.execute(query, (member_id, schedule_id))
+        conn.commit()
 
-    cursor.execute(query, (member_id, schedule_id))
-    conn.commit()
+    except mysql.connector.errors.IntegrityError as e:
+        if e.errno == 1062:
+            cursor.close()
+            conn.close()
+            raise HTTPException(status_code=400, detail="You have already booked this class! 😅")
+        else:
+            cursor.close()
+            conn.close()
+            raise HTTPException(status_code=500, detail="Database integrity error.")
+            
+    except Exception as e:
+        cursor.close()
+        conn.close()
+        raise HTTPException(status_code=500, detail=str(e))
 
     cursor.close()
     conn.close()

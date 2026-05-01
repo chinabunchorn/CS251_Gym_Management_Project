@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import Link from "next/link";
+import { useEffect, useState, useCallback } from "react";import Link from "next/link";
 
 type GymClass = {
   scheduleID: number;
@@ -57,51 +56,84 @@ const generateDateRange = (days: number) => {
 
 export default function ClassesPage() {
   const [classes, setClasses] = useState<GymClass[]>([]);
-  
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isBooking, setIsBooking] = useState(false); 
   
   const [selectedDate, setSelectedDate] = useState<string>(
     getLocalYMD(new Date())
   );
-  
-
   const [calendarDates] = useState<Date[]>(generateDateRange(14));
 
-  useEffect(() => {
-    const fetchClasses = async () => {
-      try {
-        const token = localStorage.getItem("token");
-        if (!token) throw new Error("No token found.");
+  const fetchClasses = useCallback(async () => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) throw new Error("No token found.");
 
-        const res = await fetch("http://127.0.0.1:8000/classes", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+      const res = await fetch("http://127.0.0.1:8000/classes", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
-        if (!res.ok) throw new Error("Failed to fetch classes");
+      if (!res.ok) throw new Error("Failed to fetch classes");
 
-        const data = await res.json();
+      const data = await res.json();
+      const formatted: GymClass[] = data.map((item: any) => ({
+        scheduleID: item.Schedule_ID,
+        className: item.ClassName, 
+        instructorName: item.InstructorName || "Staff", 
+        classDate: item.ClassDate,
+        classTime: formatClassTime(item.ClassTime), 
+        capacity: item.Capacity || 20,
+        reservedCount: item.ReservedCount || 0,
+      }));
 
-        const formatted: GymClass[] = data.map((item: any) => ({
-          scheduleID: item.Schedule_ID,
-          className: item.ClassName, 
-          instructorName: item.InstructorName || "Staff", 
-          classDate: item.ClassDate,
-          classTime: formatClassTime(item.ClassTime), // ใช้ฟังก์ชันรับจบของเรา
-          capacity: item.Capacity || 20,
-          reservedCount: item.ReservedCount || 0,
-        }));
-
-        setClasses(formatted);
-      } catch (err: any) {
-        console.error("Error fetching classes:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchClasses();
+      setClasses(formatted);
+    } catch (err: any) {
+      console.error("Error fetching classes:", err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchClasses();
+  }, [fetchClasses]);
+
+  const handleBookClass = async (scheduleID: number) => {
+    if (isBooking) return;
+    setIsBooking(true);
+
+    try {
+      const token = localStorage.getItem("token");
+      const memberId = localStorage.getItem("member_id"); 
+
+      if (!token || !memberId) {
+        alert("Please log in to book a class.");
+        return;
+      }
+
+      const res = await fetch(`http://127.0.0.1:8000/reserve?member_id=${memberId}&schedule_id=${scheduleID}`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!res.ok) {
+        const errText = await res.text();
+        throw new Error(errText || "Failed to book class");
+      }
+
+      alert("Class booked successfully!");
+      await fetchClasses(); 
+
+    } catch (err: any) {
+      alert(`Booking Failed: ${err.message}`);
+    } finally {
+      setIsBooking(false);
+    }
+  };
 
   const filteredClasses = classes.filter((c) => c.classDate === selectedDate);
 
@@ -194,14 +226,15 @@ export default function ClassesPage() {
                 </span>
                 
                 <button
-                  disabled={isFull}
+                  disabled={isFull || isBooking}
+                  onClick={() => handleBookClass(gymClass.scheduleID)}
                   className={`px-4 py-1.5 rounded-xl text-sm font-bold w-24 transition-transform active:scale-95
                     ${isFull 
                       ? "bg-[#FFD6EB] text-[#F579AD] cursor-not-allowed opacity-80" 
                       : "bg-[#EDE8FF] text-[#5F33E1] hover:bg-[#E3DCFF]"
                     }`}
                 >
-                  {isFull ? "Full" : "Book"}
+                  {isFull ? "Full" : isBooking ? "..." : "Book"}
                 </button>
               </div>
             </div>

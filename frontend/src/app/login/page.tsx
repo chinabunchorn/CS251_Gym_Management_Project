@@ -15,7 +15,7 @@ export default function LoginPage() {
     setError("");
 
     try {
-      const res = await fetch("http://localhost:8000/login/", {
+      const res = await fetch("http://localhost:8000/login", { 
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, password }),
@@ -30,25 +30,31 @@ export default function LoginPage() {
       if (!data) {
         throw new Error("Invalid credentials");
       }
-   
+    
       //Success
       console.log("Login success:", data);
-      //Save token
+      
+      //Save Data
       localStorage.setItem("token", data.access_token);
-      //Save role
       localStorage.setItem("role", data.role);  
 
-    // Redirect based on role
-    if (data.role === "member") {
-      window.location.href = "/member";
-    } else if (data.role === "manager") {
-      window.location.href = "/manager/dashboard";
-    } else if (data.role === "trainer") {
+      if (data.member_id) {
+        localStorage.setItem("member_id", data.member_id.toString());
+      } else if (data.employee_id) {
+        localStorage.setItem("employee_id", data.employee_id.toString());
+      }
+
+      // Redirect based on role
+      if (data.role === "member") {
+        window.location.href = "/member";
+      } else if (data.role === "manager") {
+        window.location.href = "/manager/dashboard";
+      } else if (data.role === "trainer") {
         window.location.href = "/trainer/dashboard";
-    } else {
-      // fallback (We're cooked)
-      window.location.href = "/";
-    } 
+      } else {
+        // fallback (We're cooked)
+        window.location.href = "/";
+      } 
 
     } catch (err: any) {
       setError(err.message || "Something went wrong");
@@ -56,6 +62,7 @@ export default function LoginPage() {
       setLoading(false);
     }
   };
+
   return (
     <div className="flex h-screen bg-[#f6f6f6]">
       
@@ -74,7 +81,7 @@ export default function LoginPage() {
           {/* Username */}
           <label className="block text-sm mb-1 text-[#202022]">Username</label>
           <input
-            type="email"
+            type="email" // แอบท้วงนิดนึง ตรงนี้ type="email" แต่ placeholder บอก "enter username" อาจจะเปลี่ยนเป็น type="text" ดีกว่านะครับเผื่อ username ไม่ใช่อีเมล
             placeholder="Please enter your username"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
