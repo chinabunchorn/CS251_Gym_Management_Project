@@ -93,50 +93,36 @@ export default function Manager_lockers() {
 
     const handleSave = async () => {
         const token = localStorage.getItem("token");
-
         setSaving(true);
 
         try {
-            const payload = {
-                locker_id: form.LockerID,
+            const params: Record<string, string> = {
+                locker_id: String(form.LockerID),
                 zone: form.Zone,
-                member_id: form.member_id,
             };
 
-            const query = new URLSearchParams(payload).toString();
+            if (form.member_id !== "" && form.member_id !== null && form.member_id !== undefined) {
+                params.member_id = String(form.member_id);
+            }
 
-            const res = await fetch(
-                `http://127.0.0.1:8000/manager/locker/update?${query}`,
-                {
-                    method: "PUT",
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                    },
-                }
-            );
-
-            await res.json();
-
-            const refreshRes = await fetch("http://127.0.0.1:8000/lockers", {
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                },
+            const query = new URLSearchParams(params).toString();
+            const res = await fetch(`http://127.0.0.1:8000/manager/locker/update?${query}`, {
+                method: "PUT",
+                headers: { Authorization: `Bearer ${token}` },
             });
 
-            const refreshData = await refreshRes.json();
+            if (!res.ok) {
+                const err = await res.json();
+                throw new Error(err.detail || "Update failed");
+            }
 
-            const formatted = refreshData.map((l: any) => ({
-                LockerID: l.LockerID,
-                Zone: l.Zone,
-                Status: l.STATUS,
-                UserName: l.MemberName,
-                member_id: l.Member_ID || null,
-            }));
+            await fetchLockers();
+            setSelectedLocker(null);
+            setForm(null);
 
-            setLockers(formatted);
-
-        } catch (err) {
+        } catch (err: any) {
             console.error(err);
+            alert(err.message);
         } finally {
             setSaving(false);
         }

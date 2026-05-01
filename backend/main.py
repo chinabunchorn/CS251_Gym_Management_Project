@@ -188,15 +188,13 @@ def get_lockers(user=Depends(get_current_user_any_role)):
     # Update locker status 
     sync_query = """
     UPDATE Locker l
-    LEFT JOIN Rent r ON l.LockerID = r.LockerID
-    SET l.STATUS =
-    CASE
-        WHEN r.EndDate >= CURDATE() THEN 'Occupied'
-        ELSE 'Available'
-    END
-    WHERE l.STATUS !=
-    CASE
-        WHEN r.EndDate >= CURDATE() THEN 'Occupied'
+    LEFT JOIN (
+        SELECT LockerID
+        FROM Rent
+        WHERE EndDate >= CURDATE()
+    ) active_rent ON l.LockerID = active_rent.LockerID
+    SET l.STATUS = CASE
+        WHEN active_rent.LockerID IS NOT NULL THEN 'Occupied'
         ELSE 'Available'
     END;
     """
@@ -206,18 +204,18 @@ def get_lockers(user=Depends(get_current_user_any_role)):
     #Fetch part
     query = """
     SELECT
-    l.LockerID,
-    l.Zone,
-    l.STATUS,
-    r.Member_ID,
-    CONCAT(m.FirstName, ' ', m.LastName) AS MemberName
-FROM Locker l
-LEFT JOIN Rent r
-    ON l.LockerID = r.LockerID
-    AND r.EndDate >= CURDATE()
-LEFT JOIN Member m
-    ON r.Member_ID = m.Member_ID
-ORDER BY l.LockerID;
+        l.LockerID,
+        l.Zone,
+        l.STATUS,
+        r.Member_ID,
+        CONCAT(m.FirstName, ' ', m.LastName) AS MemberName
+    FROM Locker l
+    LEFT JOIN Rent r
+        ON l.LockerID = r.LockerID
+        AND r.EndDate >= CURDATE()   -- ← ต้องมี condition นี้
+    LEFT JOIN Member m
+        ON r.Member_ID = m.Member_ID
+    ORDER BY l.LockerID;
     """
 
     cursor.execute(query)
@@ -630,6 +628,35 @@ def member_dashboard(user=Depends(require_member)):
         "upcoming_classes": upcoming_classes,
         "checked_today": checkin["checked_today"] > 0
     }
+
+@app.get("/member/my-locker")
+def get_my_locker(user=Depends(require_member)):
+    member_id = user["id"]
+    conn = get_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    query = """
+    SELECT
+        l.LockerID,
+        l.Zone,
+        l.STATUS,
+        r.StartDate,
+        r.EndDate,
+        DATEDIFF(r.EndDate, r.StartDate) AS RentDurationDays
+    FROM Rent r
+    JOIN Locker l ON r.LockerID = l.LockerID
+    WHERE r.Member_ID = %s
+    AND r.EndDate >= CURDATE()
+    LIMIT 1
+    """
+    cursor.execute(query, (member_id,))
+    locker = cursor.fetchone()
+    cursor.close()
+    conn.close()
+
+    if not locker:
+        raise HTTPException(status_code=404, detail="No active locker")
+    return locker
 
 @app.get("/member/locker")
 def get_member_locker(user=Depends(require_member)):
@@ -1983,33 +2010,25 @@ def manager_update_locker(
     cursor = conn.cursor()
 
     try:
-        # update locker zone
+        # 1. update zone
         cursor.execute(
             "UPDATE Locker SET Zone=%s WHERE LockerID=%s",
             (zone, locker_id)
         )
 
-        # assign member (safe logic)
-        if member_id is not None and member_id != "":
+        parsed_member_id = None
+        if member_id and member_id.strip() not in ("", "null", "None"):
+            parsed_member_id = int(member_id)
+
+        if parsed_member_id is not None:
+            cursor.execute(
+                "DELETE FROM Rent WHERE LockerID=%s AND EndDate >= CURDATE()",
+                (locker_id,)
+            )
             cursor.execute("""
-                SELECT 1
-                FROM Rent
-                WHERE LockerID=%s AND EndDate >= CURDATE()
-                """, (locker_id,))
-
-            rent = cursor.fetchone()
-
-            if rent:
-                cursor.execute("""
-                    UPDATE Rent
-                    SET Member_ID=%s
-                    WHERE LockerID=%s AND EndDate >= CURDATE()
-                """, (member_id, locker_id))
-            else:
-                cursor.execute("""
-                    INSERT INTO Rent (LockerID, Member_ID, StartDate, EndDate)
-                    VALUES (%s, %s, CURDATE(), DATE_ADD(CURDATE(), INTERVAL 7 DAY))
-                """, (locker_id, member_id))
+                INSERT INTO Rent (LockerID, Member_ID, StartDate, EndDate)
+                VALUES (%s, %s, CURDATE(), DATE_ADD(CURDATE(), INTERVAL 30 DAY))
+            """, (locker_id, parsed_member_id))
 
         conn.commit()
         return {"message": "Locker updated successfully"}
@@ -2017,7 +2036,6 @@ def manager_update_locker(
     except Exception as e:
         conn.rollback()
         raise HTTPException(status_code=400, detail=str(e))
-
     finally:
         cursor.close()
         conn.close()
