@@ -25,13 +25,13 @@ export default function Actions() {
       name: "My Bookings",
       icon: ClassesIcon,
       color: "text-[#5F33E1]",
-      path: "/member/bookings",
+      path: "/member/booking",
     },
     {
       name: "Trainers",
       icon: StarIcon,
       color: "text-[#5F33E1]",
-      path: "/member/trainers",
+      path: "/member/trainer",
     },
   ];
     return (

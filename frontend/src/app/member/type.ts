@@ -14,6 +14,7 @@ export type Locker = {
 } | null;
 
 export type UpcomingClass = {
+  Schedule_ID: number;
   ClassName: string;
   ClassDate: string;
   ClassTime: string;

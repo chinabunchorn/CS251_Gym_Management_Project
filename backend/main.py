@@ -546,14 +546,12 @@ def member_dashboard(user=Depends(require_member)):
     conn = get_connection()
     cursor = conn.cursor(dictionary=True)
 
-
     cursor.execute("""
         SELECT FirstName, LastName
         FROM Member
         WHERE Member_ID = %s
     """, (member_id,))
     member = cursor.fetchone()
-
 
     cursor.execute("""
         SELECT
@@ -598,9 +596,10 @@ def member_dashboard(user=Depends(require_member)):
 
     cursor.execute("""
         SELECT
+            cs.Schedule_ID,     
             cc.ClassName,
             cs.ClassDate,
-            cs.ClassTime
+            TIME_FORMAT(cs.ClassTime, '%H:%i') AS ClassTime
         FROM Reserves r
         JOIN Class_Schedule cs
             ON r.Schedule_ID = cs.Schedule_ID
@@ -608,8 +607,7 @@ def member_dashboard(user=Depends(require_member)):
             ON cs.ClassID = cc.ClassID
         WHERE r.Member_ID = %s
         AND cs.ClassDate >= CURDATE()
-        ORDER BY cs.ClassDate
-        LIMIT 2
+        ORDER BY cs.ClassDate, cs.ClassTime 
     """, (member_id,))
     upcoming_classes = cursor.fetchall()
 
@@ -621,10 +619,8 @@ def member_dashboard(user=Depends(require_member)):
     """, (member_id,))
     checkin = cursor.fetchone()
 
-
     cursor.close()
     conn.close()
-
 
     return {
         "member": member,
@@ -634,6 +630,7 @@ def member_dashboard(user=Depends(require_member)):
         "upcoming_classes": upcoming_classes,
         "checked_today": checkin["checked_today"] > 0
     }
+
 @app.get("/member/locker")
 def get_member_locker(user=Depends(require_member)):
 
@@ -695,6 +692,52 @@ def get_dashboard_stats(user=Depends(get_current_user_any_role)):
         "total_members": members,
         "active_trainers": trainers
     }
+
+@app.get("/member/bookings")
+def get_member_bookings(user=Depends(require_member)):
+    member_id = user["id"]
+    
+    conn = get_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    try:
+        query = """
+            SELECT 
+                cs.Schedule_ID,
+                cc.ClassName,
+                cs.ClassDate,
+                TIME_FORMAT(cs.ClassTime, '%H:%i') AS ClassTime,
+                COALESCE(CONCAT(e.FirstName, ' ', e.LastName), 'TBA') AS TrainerName,
+                CASE 
+                    WHEN cs.ClassDate >= CURDATE() THEN 'Upcoming'
+                    ELSE 'Completed'
+                END AS Status
+            FROM reserves r
+            JOIN class_schedule cs 
+                ON r.Schedule_ID = cs.Schedule_ID
+            JOIN class_catalog cc 
+                ON cs.ClassID = cc.ClassID
+            /* ข้ามสะพานแบบ LEFT JOIN ป้องกันคลาสหาย */
+            LEFT JOIN leads l 
+                ON cs.Schedule_ID = l.Schedule_ID
+            LEFT JOIN employee e 
+                ON l.EmployeeID = e.EmployeeID
+            WHERE r.Member_ID = %s
+            ORDER BY cs.ClassDate DESC, cs.ClassTime DESC
+        """
+        cursor.execute(query, (member_id,))
+        bookings = cursor.fetchall()
+
+
+    except Exception as e:
+        cursor.close()
+        conn.close()
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+
+    cursor.close()
+    conn.close()
+
+    return bookings
 
 @app.post("/login/member")
 def member_login(payload: UserLogin):
@@ -1468,6 +1511,36 @@ def create_package(
         "message": "Package created successfully",
         "packageID": package_id
     }
+
+@app.delete("/reserve/{schedule_id}")
+def cancel_class(schedule_id: int, user=Depends(require_member)): 
+    member_id = user["id"]
+
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    try:
+        query = """
+            DELETE FROM Reserves 
+            WHERE Member_ID = %s AND Schedule_ID = %s
+        """
+        cursor.execute(query, (member_id, schedule_id))
+        conn.commit()
+
+        if cursor.rowcount == 0:
+            cursor.close()
+            conn.close()
+            raise HTTPException(status_code=404, detail="Reservation not found or already cancelled.")
+
+    except Exception as e:
+        cursor.close()
+        conn.close()
+        raise HTTPException(status_code=500, detail=f"Failed to cancel class: {str(e)}")
+
+    cursor.close()
+    conn.close()
+
+    return {"message": "Class cancelled successfully!"}
 
 # @app.put("/employee/update")
 # def update_employee(employee_id: int, salary: float, status: str,user=Depends(get_current_user_any_role)):
